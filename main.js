@@ -127,7 +127,7 @@
      * Canvas APIを使って画像を生成する
      */
     const generateImage = async (playerData, bestList, recentList) => {
-        // This part of the function (canvas setup and drawing) remains the same.
+        // This entire section for drawing on the canvas remains unchanged.
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         const WIDTH = 1200, PADDING = 10, HEADER_HEIGHT = 120;
@@ -138,24 +138,21 @@
         const calcListHeight = (list) => {
             if (!list.length) return 0;
             const rows = Math.ceil(list.length / COLS);
-            return 40 + (rows * (BLOCK_HEIGHT + PADDING)); // 40 is for the title
+            return 40 + (rows * (BLOCK_HEIGHT + PADDING));
         };
 
         canvas.width = WIDTH;
         canvas.height = HEADER_HEIGHT + calcListHeight(bestList) + calcListHeight(recentList);
         
-        // Background
         ctx.fillStyle = '#f0f0f0';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Header
         ctx.fillStyle = '#333';
         ctx.font = 'bold 28px sans-serif';
         ctx.fillText(`${playerData.name} (Rating: ${playerData.rating})`, PADDING, 40);
         ctx.font = '16px sans-serif';
         ctx.fillText(`Generated: ${new Date().toLocaleString()}`, PADDING, 70);
 
-        // Load jacket images
         const allSongs = [...bestList, ...recentList];
         const imagePromises = allSongs.map(song => new Promise(resolve => {
             if (!song.jacketUrl) {
@@ -163,14 +160,13 @@
                 return;
             }
             const img = new Image();
-            img.crossOrigin = "anonymous"; // CORS
+            img.crossOrigin = "anonymous";
             img.onload = () => resolve({ ...song, image: img });
-            img.onerror = () => resolve({ ...song, image: null }); // Continue on failure
-            img.src = song.jacketUrl.replace('http://', 'https://'); // Use https
+            img.onerror = () => resolve({ ...song, image: null });
+            img.src = song.jacketUrl.replace('http://', 'https://');
         }));
         const songsWithImages = await Promise.all(imagePromises);
 
-        // Song list drawing function
         const renderSongList = (title, list, startY) => {
             ctx.fillStyle = '#222';
             ctx.font = 'bold 20px sans-serif';
@@ -182,14 +178,12 @@
                 const x = PADDING + col * (BLOCK_WIDTH + PADDING);
                 const y = startY + 40 + row * (BLOCK_HEIGHT + PADDING);
 
-                // Block background
                 ctx.fillStyle = song.difficulty === 'ULTIMA' ? '#ffc0cb' : '#fff';
                 ctx.strokeStyle = '#ccc';
                 ctx.lineWidth = 1;
                 ctx.fillRect(x, y, BLOCK_WIDTH, BLOCK_HEIGHT);
                 ctx.strokeRect(x, y, BLOCK_WIDTH, BLOCK_HEIGHT);
 
-                // Jacket
                 if (song.image) {
                     ctx.drawImage(song.image, x + 5, y + 5, BLOCK_WIDTH - 10, BLOCK_WIDTH - 10);
                 } else {
@@ -197,7 +191,6 @@
                     ctx.fillRect(x + 5, y + 5, BLOCK_WIDTH - 10, BLOCK_WIDTH - 10);
                 }
                 
-                // Text
                 ctx.fillStyle = '#000';
                 ctx.font = '12px sans-serif';
                 const titleText = song.title.length > 15 ? song.title.substring(0, 14) + '…' : song.title;
@@ -218,33 +211,53 @@
         renderSongList("新曲枠", songsWithImages.slice(bestList.length), recentStartY);
         
         // --- MODIFICATION START ---
-        // Instead of opening a new window, display the result in the overlay.
+        // This section now includes a "Save Image" button.
         const dataUrl = canvas.toDataURL('image/png');
         
-        // Find the overlay created at the start of the script
         const overlay = document.querySelector('div[style*="z-index: 9999"]');
         if (overlay) {
-            // Clear the "Loading..." message
             overlay.innerHTML = ''; 
+            overlay.style.alignItems = 'flex-start';
+            overlay.style.overflowY = 'auto';
 
-            // Add styles for the result view
-            overlay.style.alignItems = 'flex-start'; // Align to top
-            overlay.style.overflowY = 'auto'; // Allow scrolling
-
-            // Create image element
             const resultImage = document.createElement('img');
             resultImage.src = dataUrl;
             resultImage.style.maxWidth = '90%';
-            resultImage.style.margin = '20px auto'; // Add some margin
+            resultImage.style.margin = '20px auto';
             resultImage.style.display = 'block';
 
-            // Create a close button
-            const closeButton = document.createElement('button');
-            closeButton.textContent = 'Close';
-            closeButton.style.cssText = `
+            // Button container
+            const buttonContainer = document.createElement('div');
+            buttonContainer.style.cssText = `
                 position: fixed;
                 top: 10px;
                 right: 20px;
+                display: flex;
+                gap: 10px; /* Adds space between buttons */
+            `;
+
+            // --- ADDITION START ---
+            // Create a save button (styled link)
+            const saveButton = document.createElement('a');
+            saveButton.href = dataUrl;
+            saveButton.download = `chunithm-rating-${new Date().toISOString().slice(0,10)}.png`;
+            saveButton.textContent = 'Save Image';
+            saveButton.style.cssText = `
+                padding: 10px 20px;
+                font-size: 16px;
+                cursor: pointer;
+                background-color: #28a745; /* Green */
+                color: white;
+                border: none;
+                border-radius: 5px;
+                text-decoration: none;
+                font-family: sans-serif;
+            `;
+            // --- ADDITION END ---
+
+            const closeButton = document.createElement('button');
+            closeButton.textContent = 'Close';
+            closeButton.style.cssText = `
                 padding: 10px 20px;
                 font-size: 16px;
                 cursor: pointer;
@@ -254,19 +267,22 @@
                 border-radius: 5px;
             `;
 
-            // Close function
             const closeOverlay = () => document.body.removeChild(overlay);
             
             closeButton.onclick = closeOverlay;
             overlay.onclick = (e) => {
-                // Close only if clicking the background, not the image itself
                 if (e.target === overlay) {
                     closeOverlay();
                 }
             };
             
+            // --- ADDITION ---
+            // Add the new save button to the container
+            buttonContainer.appendChild(saveButton); 
+            buttonContainer.appendChild(closeButton);
+            
             overlay.appendChild(resultImage);
-            overlay.appendChild(closeButton);
+            overlay.appendChild(buttonContainer); // Add the container to the overlay
         }
         // --- MODIFICATION END ---
     };
