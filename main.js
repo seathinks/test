@@ -311,20 +311,35 @@
         const allSongs = [...bestList, ...recentList];
         const detailedSongs = [];
 
+        // ... (this is inside the main try block)
+
         for (let i = 0; i < allSongs.length; i++) {
             const song = allSongs[i];
             updateMessage(`詳細情報を取得中... (${i + 1}/${allSongs.length}) ${song.title}`);
             const details = await scrapeMusicDetail(song.params);
 
-            // 譜面定数を検索
+            // --- CORRECTED MATCHING LOGIC START ---
+
+            // Map full difficulty names to the abbreviations used in your JSON
+            const difficultyMapToJson = {
+                'MASTER': 'MAS',
+                'EXPERT': 'EXP',
+                'ULTIMA': 'ULT',
+                'ADVANCED': 'ADV',
+                'BASIC': 'BAS'
+            };
+            const diffAbbreviation = difficultyMapToJson[song.difficulty];
+
+            // Find the song constant using the correct key ("diff") and abbreviation
             const matchedConst = constData.find(
-                m => m.title === song.title && m.difficulty === song.difficulty
+                m => m.title === song.title && m.diff === diffAbbreviation
             )?.const;
             
-            // レート値を計算
+            // Calculate the rating
             const rating = calculateRating(song.score_int, matchedConst);
             
             detailedSongs.push({ ...song, ...details, 'const': matchedConst || 0.0, rating });
+            // --- CORRECTED MATCHING LOGIC END ---
         }
         
         updateMessage("画像生成中...");
