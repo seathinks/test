@@ -171,7 +171,6 @@
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
 
-        // --- ヘルパー関数: 平均レーティング計算 ---
         const calculateAverageRating = (list) => {
             if (!list || list.length === 0) return 0.0;
             const total = list.reduce((sum, song) => sum + song.rating, 0);
@@ -179,11 +178,11 @@
         };
 
         // --- レイアウト定数 ---
-        const WIDTH = 1200, PADDING = 15, HEADER_HEIGHT = 160; // ヘッダーを少し広げる
+        const WIDTH = 1200, PADDING = 15, HEADER_HEIGHT = 160;
         const COLS = 5;
         const BLOCK_WIDTH = (WIDTH - PADDING * (COLS + 1)) / COLS;
         const JACKET_SIZE = BLOCK_WIDTH * 0.7;
-        const BLOCK_HEIGHT = 280;
+        const BLOCK_HEIGHT = 290; // 新レイアウトに合わせて高さを調整
         
         const calcListHeight = (list) => {
             if (!list.length) return 0;
@@ -198,17 +197,14 @@
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         // --- ヘッダー描画 ---
-        // プレイヤー名
         ctx.fillStyle = '#FFFFFF';
         ctx.font = 'bold 32px sans-serif';
         ctx.fillText(playerData.name, PADDING, 50);
 
-        // 各種レーティング
         ctx.font = 'bold 24px sans-serif';
         ctx.textAlign = 'right';
         ctx.fillText(`PLAYER RATING: ${playerData.rating}`, WIDTH - PADDING, 50);
 
-        // 平均値計算
         const bestAvg = calculateAverageRating(bestList);
         const recentAvg = calculateAverageRating(recentList);
 
@@ -216,9 +212,8 @@
         ctx.fillStyle = '#C8C8C8';
         ctx.fillText(`BEST枠 平均: ${bestAvg.toFixed(4)}`, WIDTH - PADDING, 90);
         ctx.fillText(`新曲枠 平均: ${recentAvg.toFixed(4)}`, WIDTH - PADDING, 120);
-        ctx.textAlign = 'left'; // Alignをリセット
+        ctx.textAlign = 'left';
 
-        // ... (画像の読み込みとリスト描画処理は変更なし) ...
         const allSongs = [...bestList, ...recentList];
         const imagePromises = allSongs.map(song => new Promise(resolve => {
             if (!song.jacketUrl) { resolve({ ...song, image: null }); return; }
@@ -230,6 +225,7 @@
         }));
         const songsWithImages = await Promise.all(imagePromises);
 
+        // --- 楽曲リスト描画関数 ---
         const renderSongList = (title, list, startY) => {
             ctx.fillStyle = '#FFFFFF';
             ctx.font = 'bold 20px sans-serif';
@@ -248,6 +244,7 @@
                 ctx.strokeRect(x, y, BLOCK_WIDTH, BLOCK_HEIGHT);
 
                 const rankInfo = getRankInfo(song.score_int);
+                
                 const jacket_x = x + (BLOCK_WIDTH - JACKET_SIZE) / 2;
                 const jacket_y = y + 15;
                 if (song.image) {
@@ -257,33 +254,48 @@
                     ctx.fillRect(jacket_x, jacket_y, JACKET_SIZE, JACKET_SIZE);
                 }
 
-                let text_y = jacket_y + JACKET_SIZE + 20;
+                // --- テキスト描画（新レイアウト）---
+                let text_y = jacket_y + JACKET_SIZE + 25;
 
-                ctx.fillStyle = '#FFFFFF';
-                ctx.font = '14px sans-serif';
-                const titleText = song.title.length > 13 ? song.title.substring(0, 12) + '…' : song.title;
-                ctx.fillText(titleText, x + 10, text_y);
-                text_y += 22;
-
-                ctx.fillStyle = rankInfo.color;
+                // Line 1: 曲名（左揃え）とプレイ回数（右揃え）
                 ctx.font = 'bold 16px sans-serif';
-                ctx.fillText(`${song.score_str} [${rankInfo.rank}]`, x + 10, text_y);
+                let titleText = song.title;
+                const availableWidth = BLOCK_WIDTH - 80; // 右側にスペースを確保
+                
+                // 文字幅を計算して省略記号(...)を追加
+                if (ctx.measureText(titleText).width > availableWidth) {
+                    while (ctx.measureText(titleText + '…').width > availableWidth) {
+                        titleText = titleText.slice(0, -1);
+                    }
+                    titleText += '…';
+                }
+                
+                ctx.fillStyle = '#FFFFFF';
+                ctx.textAlign = 'left';
+                ctx.fillText(titleText, x + 10, text_y);
 
-                ctx.font = '12px sans-serif';
-                ctx.fillStyle = '#CCCCCC';
+                ctx.fillStyle = '#81D4FA'; // 明るい青色
+                ctx.font = '14px sans-serif';
                 ctx.textAlign = 'right';
-                ctx.fillText(`▶${song.playCount}`, x + BLOCK_WIDTH - 10, text_y);
+                ctx.fillText(`▶ ${song.playCount}`, x + BLOCK_WIDTH - 10, text_y);
                 ctx.textAlign = 'left';
                 text_y += 28;
 
-                ctx.fillStyle = '#FFFFFF';
-                ctx.font = 'bold 15px sans-serif';
-                ctx.fillText(`CONST: `, x + 10, text_y);
-                ctx.fillText(song.const.toFixed(2), x + 80, text_y);
-                text_y += 20;
+                // Line 2: スコア [ランク]
+                ctx.fillStyle = rankInfo.color;
+                ctx.font = 'bold 20px sans-serif';
+                ctx.fillText(`${song.score_str} [${rankInfo.rank}]`, x + 10, text_y);
+                text_y += 32;
 
-                ctx.fillText(`RATING: `, x + 10, text_y);
-                ctx.fillText(song.rating.toFixed(2), x + 80, text_y);
+                // Line 3 & 4: CONST と RATING
+                ctx.fillStyle = '#E0E0E0';
+                ctx.font = '15px sans-serif';
+                ctx.fillText(`CONST:`, x + 10, text_y);
+                ctx.fillText(song.const.toFixed(2), x + 90, text_y);
+                text_y += 22;
+                
+                ctx.fillText(`RATING:`, x + 10, text_y);
+                ctx.fillText(song.rating.toFixed(2), x + 90, text_y);
             });
         };
         
