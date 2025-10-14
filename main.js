@@ -297,8 +297,9 @@
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
 
-        // --- ヘッダー描画 (新レイアウト) ---
-        // プレイヤーネームを大きく、より目立つように
+        // --- ヘッダー描画 (最終レイアウト) ---
+        // --- 左側 ---
+        // プレイヤーネーム
         ctx.font = `bold 48px ${FONT_FAMILY}`;
         ctx.fillStyle = '#FFFFFF';
         ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
@@ -306,15 +307,15 @@
         ctx.fillText(playerData.name, PADDING, 75);
         ctx.shadowBlur = 0;
 
-        // 生成日時を追加
-        const now = new Date();
-        const timestamp = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-        ctx.font = `16px ${FONT_FAMILY}`;
+        // 平均レート (左側に移動)
+        const bestAvg = calculateAverageRating(bestList);
+        const recentAvg = calculateAverageRating(recentList);
+        ctx.font = `20px ${FONT_FAMILY}`;
         ctx.fillStyle = '#D1C4E9';
-        ctx.fillText(`Generated at: ${timestamp}`, PADDING, 110);
+        ctx.fillText(`BEST Avg: ${bestAvg.toFixed(4)}`, PADDING, 120);
+        ctx.fillText(`RECENT Avg: ${recentAvg.toFixed(4)}`, PADDING, 150);
 
-
-        // レート表記を全体的に大きく
+        // --- 右側 ---
         ctx.textAlign = 'right';
 
         // "PLAYER RATING" ラベル
@@ -327,23 +328,17 @@
         ctx.fillStyle = '#00FFFF'; // シアン
         ctx.shadowColor = 'rgba(0, 255, 255, 0.9)';
         ctx.shadowBlur = 20;
-        // y座標を調整してラベルと数値をいい感じに配置
         ctx.fillText(playerData.rating, WIDTH - PADDING, 115);
         ctx.shadowBlur = 0;
 
-
-        const bestAvg = calculateAverageRating(bestList);
-        const recentAvg = calculateAverageRating(recentList);
-
-        ctx.font = `20px ${FONT_FAMILY}`;
+        // 生成日時 (右側に移動)
+        const now = new Date();
+        const timestamp = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        ctx.font = `16px ${FONT_FAMILY}`;
         ctx.fillStyle = '#D1C4E9';
-        ctx.fillText(`BEST Avg: ${bestAvg.toFixed(4)}`, WIDTH - PADDING, 150);
-        ctx.fillText(`RECENT Avg: ${recentAvg.toFixed(4)}`, WIDTH - PADDING, 180);
+        ctx.fillText(`Generated at: ${timestamp}`, WIDTH - PADDING, 150);
 
-        // HEADER_HEIGHTを少し広げる必要があるので、レイアウト定数を変更
-        // この変更に合わせて、後続のリスト開始Y座標も調整される
-        
-
+        // 最後にtextAlignをデフォルトに戻す
         ctx.textAlign = 'left';
 
         // --- 画像の事前読み込み ---
