@@ -179,12 +179,13 @@
          * @param {number} y - Y座標
          * @param {number} maxWidth - 最大幅
          * @param {number} lineHeight - 行の高さ
-         * @returns {number} - 描画後の最終的なY座標
+         * @returns {object} - { finalY: 描画後の最終的なY座標, lines: 描画した行数 }
          */
         const wrapText = (context, text, x, y, maxWidth, lineHeight) => {
             const words = text.split('');
             let line = '';
             let currentY = y;
+            let lineCount = 1;
 
             for (let n = 0; n < words.length; n++) {
                 const testLine = line + words[n];
@@ -194,12 +195,13 @@
                     context.fillText(line, x, currentY);
                     line = words[n];
                     currentY += lineHeight;
+                    lineCount++;
                 } else {
                     line = testLine;
                 }
             }
             context.fillText(line, x, currentY);
-            return currentY;
+            return { finalY: currentY, lines: lineCount };
         };
 
 
@@ -209,12 +211,12 @@
             return total / list.length;
         };
 
-        // --- レイアウト定数 (変更点) ---
-        const WIDTH = 1200, PADDING = 20, HEADER_HEIGHT = 160; // PADDINGを増加
+        // --- レイアウト定数 ---
+        const WIDTH = 1200, PADDING = 20, HEADER_HEIGHT = 160;
         const COLS = 5;
         const BLOCK_WIDTH = (WIDTH - PADDING * (COLS + 1)) / COLS;
-        const JACKET_SIZE = BLOCK_WIDTH * 0.85; // ジャケットを少し大きく
-        const BLOCK_HEIGHT = 380; // カードの高さを大幅に増加
+        const JACKET_SIZE = BLOCK_WIDTH * 0.85;
+        const BLOCK_HEIGHT = 380;
 
         const calcListHeight = (list) => {
             if (!list.length) return 0;
@@ -269,7 +271,7 @@
                 const x = PADDING + col * (BLOCK_WIDTH + PADDING);
                 const y = startY + 40 + row * (BLOCK_HEIGHT + PADDING);
 
-                ctx.fillStyle = 'rgba(54, 54, 54, 0.9)'; // 少し背景を暗く
+                ctx.fillStyle = 'rgba(54, 54, 54, 0.9)';
                 ctx.strokeStyle = '#555';
                 ctx.lineWidth = 1;
                 ctx.fillRect(x, y, BLOCK_WIDTH, BLOCK_HEIGHT);
@@ -290,25 +292,28 @@
                 let current_y = jacket_y + JACKET_SIZE + 28;
                 const text_x = x + 15;
                 const text_width = BLOCK_WIDTH - 30;
+                const titleLineHeight = 22;
 
-                // 曲名 (改行対応)
+                // 曲名 (常に2行分の高さを確保)
                 ctx.fillStyle = '#FFFFFF';
                 ctx.font = 'bold 17px sans-serif';
-                current_y = wrapText(ctx, song.title, text_x, current_y, text_width, 22);
+                const titleInfo = wrapText(ctx, song.title, text_x, current_y, text_width, titleLineHeight);
+                current_y = titleInfo.finalY;
+                if (titleInfo.lines === 1) { // 描画が1行だった場合
+                    current_y += titleLineHeight; // 2行目を空白にするため高さを加算
+                }
 
                 current_y += 28; // 曲名とスコアの間の余白
 
-                // スコア
-                ctx.font = '16px sans-serif';
-                ctx.fillStyle = '#E0E0E0';
-                ctx.fillText('スコア', text_x, current_y);
-                ctx.textAlign = 'right';
-                ctx.font = 'bold 18px sans-serif';
+                // スコア (ラベルなし、中央揃え)
+                const scoreText = `${song.score_str} [${rankInfo.rank}]`;
+                ctx.font = 'bold 20px sans-serif';
                 ctx.fillStyle = rankInfo.color;
-                ctx.fillText(`${song.score_str} [${rankInfo.rank}]`, x + BLOCK_WIDTH - 15, current_y);
-                ctx.textAlign = 'left';
+                const scoreWidth = ctx.measureText(scoreText).width;
+                const score_x = x + (BLOCK_WIDTH - scoreWidth) / 2; // 中央揃えのX座標を計算
+                ctx.fillText(scoreText, score_x, current_y);
 
-                current_y += 30;
+                current_y += 32;
 
                 // 定数
                 ctx.font = '16px sans-serif';
@@ -327,7 +332,7 @@
                 ctx.fillText('RATE', text_x, current_y);
                 ctx.textAlign = 'right';
                 ctx.font = 'bold 20px sans-serif';
-                ctx.fillStyle = '#81D4FA'; // 明るい青色
+                ctx.fillStyle = '#81D4FA';
                 ctx.fillText(song.rating.toFixed(4), x + BLOCK_WIDTH - 15, current_y);
                 ctx.textAlign = 'left';
 
