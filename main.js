@@ -171,12 +171,19 @@
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
 
-        // --- Layout Constants ---
-        const WIDTH = 1200, PADDING = 10, HEADER_HEIGHT = 120;
+        // --- ヘルパー関数: 平均レーティング計算 ---
+        const calculateAverageRating = (list) => {
+            if (!list || list.length === 0) return 0.0;
+            const total = list.reduce((sum, song) => sum + song.rating, 0);
+            return total / list.length;
+        };
+
+        // --- レイアウト定数 ---
+        const WIDTH = 1200, PADDING = 15, HEADER_HEIGHT = 160; // ヘッダーを少し広げる
         const COLS = 5;
         const BLOCK_WIDTH = (WIDTH - PADDING * (COLS + 1)) / COLS;
-        const JACKET_SIZE = BLOCK_WIDTH * 0.7; // Smaller jacket size
-        const BLOCK_HEIGHT = 280; // Adjusted fixed height for the new layout
+        const JACKET_SIZE = BLOCK_WIDTH * 0.7;
+        const BLOCK_HEIGHT = 280;
         
         const calcListHeight = (list) => {
             if (!list.length) return 0;
@@ -187,18 +194,31 @@
         canvas.width = WIDTH;
         canvas.height = HEADER_HEIGHT + calcListHeight(bestList) + calcListHeight(recentList);
         
-        // Background
-        ctx.fillStyle = '#313131'; // Darker background
+        ctx.fillStyle = '#313131';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Header
+        // --- ヘッダー描画 ---
+        // プレイヤー名
         ctx.fillStyle = '#FFFFFF';
-        ctx.font = 'bold 28px sans-serif';
-        ctx.fillText(`${playerData.name} (Rating: ${playerData.rating})`, PADDING, 40);
-        ctx.font = '16px sans-serif';
-        ctx.fillText(`Generated: ${new Date().toLocaleString()}`, PADDING, 70);
+        ctx.font = 'bold 32px sans-serif';
+        ctx.fillText(playerData.name, PADDING, 50);
 
-        // Load images
+        // 各種レーティング
+        ctx.font = 'bold 24px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(`PLAYER RATING: ${playerData.rating}`, WIDTH - PADDING, 50);
+
+        // 平均値計算
+        const bestAvg = calculateAverageRating(bestList);
+        const recentAvg = calculateAverageRating(recentList);
+
+        ctx.font = '20px sans-serif';
+        ctx.fillStyle = '#C8C8C8';
+        ctx.fillText(`BEST枠 平均: ${bestAvg.toFixed(4)}`, WIDTH - PADDING, 90);
+        ctx.fillText(`新曲枠 平均: ${recentAvg.toFixed(4)}`, WIDTH - PADDING, 120);
+        ctx.textAlign = 'left'; // Alignをリセット
+
+        // ... (画像の読み込みとリスト描画処理は変更なし) ...
         const allSongs = [...bestList, ...recentList];
         const imagePromises = allSongs.map(song => new Promise(resolve => {
             if (!song.jacketUrl) { resolve({ ...song, image: null }); return; }
@@ -210,7 +230,6 @@
         }));
         const songsWithImages = await Promise.all(imagePromises);
 
-        // --- RENDER FUNCTION ---
         const renderSongList = (title, list, startY) => {
             ctx.fillStyle = '#FFFFFF';
             ctx.font = 'bold 20px sans-serif';
@@ -222,18 +241,13 @@
                 const x = PADDING + col * (BLOCK_WIDTH + PADDING);
                 const y = startY + 40 + row * (BLOCK_HEIGHT + PADDING);
 
-                // Block background
                 ctx.fillStyle = 'rgba(74, 74, 74, 0.8)';
                 ctx.strokeStyle = '#555';
                 ctx.lineWidth = 1;
                 ctx.fillRect(x, y, BLOCK_WIDTH, BLOCK_HEIGHT);
                 ctx.strokeRect(x, y, BLOCK_WIDTH, BLOCK_HEIGHT);
 
-                // --- MODIFIED DRAWING LOGIC ---
-                // 1. Get Rank Info
                 const rankInfo = getRankInfo(song.score_int);
-
-                // 2. Draw Jacket (smaller and centered)
                 const jacket_x = x + (BLOCK_WIDTH - JACKET_SIZE) / 2;
                 const jacket_y = y + 15;
                 if (song.image) {
@@ -243,22 +257,18 @@
                     ctx.fillRect(jacket_x, jacket_y, JACKET_SIZE, JACKET_SIZE);
                 }
 
-                // 3. Position text below the jacket
                 let text_y = jacket_y + JACKET_SIZE + 20;
 
-                // Title
                 ctx.fillStyle = '#FFFFFF';
                 ctx.font = '14px sans-serif';
                 const titleText = song.title.length > 13 ? song.title.substring(0, 12) + '…' : song.title;
                 ctx.fillText(titleText, x + 10, text_y);
                 text_y += 22;
 
-                // Score [Rank]
                 ctx.fillStyle = rankInfo.color;
                 ctx.font = 'bold 16px sans-serif';
                 ctx.fillText(`${song.score_str} [${rankInfo.rank}]`, x + 10, text_y);
 
-                // Play Count
                 ctx.font = '12px sans-serif';
                 ctx.fillStyle = '#CCCCCC';
                 ctx.textAlign = 'right';
@@ -266,14 +276,12 @@
                 ctx.textAlign = 'left';
                 text_y += 28;
 
-                // Const
                 ctx.fillStyle = '#FFFFFF';
                 ctx.font = 'bold 15px sans-serif';
                 ctx.fillText(`CONST: `, x + 10, text_y);
                 ctx.fillText(song.const.toFixed(2), x + 80, text_y);
                 text_y += 20;
 
-                // Rating
                 ctx.fillText(`RATING: `, x + 10, text_y);
                 ctx.fillText(song.rating.toFixed(2), x + 80, text_y);
             });
@@ -285,7 +293,6 @@
         renderSongList("BEST枠", songsWithImages.slice(0, bestList.length), bestStartY);
         renderSongList("新曲枠", songsWithImages.slice(bestList.length), recentStartY);
         
-        // --- Display Logic (No changes here) ---
         const dataUrl = canvas.toDataURL('image/png');
         const overlay = document.querySelector('div[style*="z-index: 9999"]');
         if (overlay) {
@@ -333,9 +340,25 @@
     try {
         updateMessage("プレイヤー情報を取得中...");
         const playerDoc = await fetchDocument(URL_PLAYER_DATA);
+
+        // --- RATING SCRAPING FIX START ---
+        // 画像からレーティング数値を抽出する
+        let ratingString = '';
+        const ratingImages = playerDoc.querySelectorAll('.player_rating_num_block img');
+        ratingImages.forEach(img => {
+            const src = img.src;
+            const lastChar = src.charAt(src.length - 5); // "num_X.png" の "X" を取得
+            if (lastChar === 'a') {
+                ratingString += '.';
+            } else {
+                ratingString += lastChar;
+            }
+        });
+        // --- RATING SCRAPING FIX END ---
+
         const playerData = {
             name: playerDoc.querySelector('.player_name_in').innerText,
-            rating: playerDoc.querySelector('.player_rating_num_block').innerText.replace(/\s/g, ''),
+            rating: ratingString, // 修正したレーティング文字列を使用
         };
 
         updateMessage("譜面定数データをダウンロード中...");
@@ -349,50 +372,34 @@
         const allSongs = [...bestList, ...recentList];
         const detailedSongs = [];
 
-        // ... (this is inside the main try block)
-
         for (let i = 0; i < allSongs.length; i++) {
             const song = allSongs[i];
             updateMessage(`詳細情報を取得中... (${i + 1}/${allSongs.length}) ${song.title}`);
             const details = await scrapeMusicDetail(song.params);
 
-            // --- CORRECTED MATCHING LOGIC START ---
-
-            // Map full difficulty names to the abbreviations used in your JSON
             const difficultyMapToJson = {
-                'MASTER': 'MAS',
-                'EXPERT': 'EXP',
-                'ULTIMA': 'ULT',
-                'ADVANCED': 'ADV',
-                'BASIC': 'BAS'
+                'MASTER': 'MAS', 'EXPERT': 'EXP', 'ULTIMA': 'ULT',
+                'ADVANCED': 'ADV', 'BASIC': 'BAS'
             };
             const diffAbbreviation = difficultyMapToJson[song.difficulty];
 
-            // Find the song constant using the correct key ("diff") and abbreviation
             const matchedConst = constData.find(
                 m => m.title === song.title && m.diff === diffAbbreviation
             )?.const;
             
-            // Calculate the rating
             const rating = calculateRating(song.score_int, matchedConst);
             
             detailedSongs.push({ ...song, ...details, 'const': matchedConst || 0.0, rating });
-            // --- CORRECTED MATCHING LOGIC END ---
         }
         
-        updateMessage("画像生成中...");
         const finalBestList = detailedSongs.slice(0, bestList.length);
         const finalRecentList = detailedSongs.slice(bestList.length);
 
         await generateImage(playerData, finalBestList, finalRecentList);
 
-        //updateMessage("完了！");
-        //document.body.removeChild(overlay);
-
     } catch (error) {
         console.error("ブックマークレットの実行中にエラーが発生しました:", error);
         message.textContent = `エラー: ${error.message} (詳細はコンソールを確認してください)`;
-        // エラー発生後も5秒後にオーバーレイを消す
         setTimeout(() => document.body.removeChild(overlay), 5000);
     }
 })();
