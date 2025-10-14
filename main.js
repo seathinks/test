@@ -94,29 +94,29 @@
         const artist = doc.querySelector('.play_musicdata_artist')?.innerText || 'N/A';
         const jacketUrl = doc.querySelector('.play_jacket_img img')?.src || '';
 
-        // --- CORRECTED PLAY COUNT LOGIC START ---
+        // --- NEW AND CORRECTED PLAY COUNT LOGIC ---
         let playCount = 'N/A';
-        // Select the container for the currently viewed difficulty (e.g., MASTER, EXPERT)
         const difficultyMap = { '0': 'basic', '1': 'advanced', '2': 'expert', '3': 'master', '4': 'ultima' };
         const diffSelector = `.music_box.bg_${difficultyMap[params.diff]}`;
         const difficultyBlock = doc.querySelector(diffSelector);
 
         if (difficultyBlock) {
-            // Find all title elements within that difficulty block
-            const titles = difficultyBlock.querySelectorAll('.musicdata_score_title');
-            for (const titleElement of titles) {
-                // Find the specific title element for "プレイ回数"
-                if (titleElement.innerText.trim() === 'プレイ回数') {
-                    // The actual play count is in the next sibling element
-                    const countElement = titleElement.parentElement.nextElementSibling?.querySelector('.text_b');
+            // Find all of the separate data containers (like HIGH SCORE, プレイ回数, etc.)
+            const dataContainers = difficultyBlock.querySelectorAll('.box14.w400');
+            for (const container of dataContainers) {
+                const titleElement = container.querySelector('.musicdata_score_title');
+                
+                // Check if this container is the one for "プレイ回数"
+                if (titleElement && titleElement.innerText.includes('プレイ回数')) {
+                    const countElement = container.querySelector('.musicdata_score_num .text_b');
                     if (countElement) {
                         playCount = countElement.innerText;
                     }
-                    break; // Stop searching once we've found it
+                    break; // Found the right container, no need to search further
                 }
             }
         }
-        // --- CORRECTED PLAY COUNT LOGIC END ---
+        // --- END OF NEW LOGIC ---
 
         return { artist, jacketUrl, playCount };
     };
