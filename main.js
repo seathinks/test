@@ -172,27 +172,37 @@
         const ctx = canvas.getContext('2d');
 
         /**
-         * 指定された幅でテキストを改行描画するヘルパー関数
+         * 指定された幅でテキストを改行描画するヘルパー関数 (中央揃え対応)
          * @param {CanvasRenderingContext2D} context - Canvasの2Dコンテキスト
          * @param {string} text - 描画するテキスト
-         * @param {number} x - X座標
-         * @param {number} y - Y座標
-         * @param {number} maxWidth - 最大幅
+         * @param {number} x - 描画エリアの左端X座標
+         * @param {number} y - 描画を開始するY座標
+         * @param {number} maxWidth - 描画エリアの最大幅
          * @param {number} lineHeight - 行の高さ
+         * @param {string} align - 'left' または 'center'
          * @returns {object} - { finalY: 描画後の最終的なY座標, lines: 描画した行数 }
          */
-        const wrapText = (context, text, x, y, maxWidth, lineHeight) => {
+        const wrapText = (context, text, x, y, maxWidth, lineHeight, align = 'left') => {
             const words = text.split('');
             let line = '';
             let currentY = y;
             let lineCount = 1;
+
+            const drawLine = (line, y) => {
+                let drawX = x;
+                if (align === 'center') {
+                    const lineWidth = context.measureText(line).width;
+                    drawX = x + (maxWidth - lineWidth) / 2;
+                }
+                context.fillText(line, drawX, y);
+            };
 
             for (let n = 0; n < words.length; n++) {
                 const testLine = line + words[n];
                 const metrics = context.measureText(testLine);
                 const testWidth = metrics.width;
                 if (testWidth > maxWidth && n > 0) {
-                    context.fillText(line, x, currentY);
+                    drawLine(line, currentY);
                     line = words[n];
                     currentY += lineHeight;
                     lineCount++;
@@ -200,7 +210,7 @@
                     line = testLine;
                 }
             }
-            context.fillText(line, x, currentY);
+            drawLine(line, currentY);
             return { finalY: currentY, lines: lineCount };
         };
 
@@ -259,7 +269,7 @@
         }));
         const songsWithImages = await Promise.all(imagePromises);
 
-        // --- 楽曲リスト描画関数 (変更点) ---
+        // --- 楽曲リスト描画関数 ---
         const renderSongList = (title, list, startY) => {
             ctx.fillStyle = '#FFFFFF';
             ctx.font = 'bold 20px sans-serif';
@@ -290,27 +300,28 @@
 
                 // --- テキスト描画（新レイアウト）---
                 let current_y = jacket_y + JACKET_SIZE + 28;
-                const text_x = x + 15;
+                const text_x_padded = x + 15;
                 const text_width = BLOCK_WIDTH - 30;
                 const titleLineHeight = 22;
 
-                // 曲名 (常に2行分の高さを確保)
+                // 曲名 (中央揃え、常に2行分の高さを確保)
                 ctx.fillStyle = '#FFFFFF';
                 ctx.font = 'bold 17px sans-serif';
-                const titleInfo = wrapText(ctx, song.title, text_x, current_y, text_width, titleLineHeight);
+                // wrapTextの第7引数に 'center' を指定
+                const titleInfo = wrapText(ctx, song.title, text_x_padded, current_y, text_width, titleLineHeight, 'center');
                 current_y = titleInfo.finalY;
-                if (titleInfo.lines === 1) { // 描画が1行だった場合
-                    current_y += titleLineHeight; // 2行目を空白にするため高さを加算
+                if (titleInfo.lines === 1) {
+                    current_y += titleLineHeight;
                 }
 
-                current_y += 28; // 曲名とスコアの間の余白
+                current_y += 28;
 
                 // スコア (ラベルなし、中央揃え)
                 const scoreText = `${song.score_str} [${rankInfo.rank}]`;
                 ctx.font = 'bold 20px sans-serif';
                 ctx.fillStyle = rankInfo.color;
                 const scoreWidth = ctx.measureText(scoreText).width;
-                const score_x = x + (BLOCK_WIDTH - scoreWidth) / 2; // 中央揃えのX座標を計算
+                const score_x = x + (BLOCK_WIDTH - scoreWidth) / 2;
                 ctx.fillText(scoreText, score_x, current_y);
 
                 current_y += 32;
@@ -318,7 +329,7 @@
                 // 定数
                 ctx.font = '16px sans-serif';
                 ctx.fillStyle = '#E0E0E0';
-                ctx.fillText('定数', text_x, current_y);
+                ctx.fillText('定数', text_x_padded, current_y);
                 ctx.textAlign = 'right';
                 ctx.font = 'bold 18px sans-serif';
                 ctx.fillText(song.const.toFixed(2), x + BLOCK_WIDTH - 15, current_y);
@@ -329,7 +340,7 @@
                 // RATE
                 ctx.font = '16px sans-serif';
                 ctx.fillStyle = '#E0E0E0';
-                ctx.fillText('RATE', text_x, current_y);
+                ctx.fillText('RATE', text_x_padded, current_y);
                 ctx.textAlign = 'right';
                 ctx.font = 'bold 20px sans-serif';
                 ctx.fillStyle = '#81D4FA';
@@ -341,7 +352,7 @@
                 // プレイ回数
                 ctx.font = '16px sans-serif';
                 ctx.fillStyle = '#E0E0E0';
-                ctx.fillText('プレイ回数', text_x, current_y);
+                ctx.fillText('プレイ回数', text_x_padded, current_y);
                 ctx.textAlign = 'right';
                 ctx.font = 'bold 18px sans-serif';
                 ctx.fillText(song.playCount, x + BLOCK_WIDTH - 15, current_y);
