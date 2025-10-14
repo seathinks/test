@@ -273,7 +273,7 @@
         };
 
         // --- レイアウト定数 ---
-        const WIDTH = 1200, PADDING = 25, HEADER_HEIGHT = 160;
+        const WIDTH = 1200, PADDING = 25, HEADER_HEIGHT = 200;
         const COLS = 5;
         const BLOCK_WIDTH = (WIDTH - PADDING * (COLS + 1)) / COLS;
         const JACKET_SIZE = BLOCK_WIDTH * 0.85;
@@ -342,7 +342,7 @@
 
         // HEADER_HEIGHTを少し広げる必要があるので、レイアウト定数を変更
         // この変更に合わせて、後続のリスト開始Y座標も調整される
-        HEADER_HEIGHT = 200;
+        
 
         ctx.textAlign = 'left';
 
