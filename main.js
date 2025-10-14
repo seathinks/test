@@ -127,8 +127,7 @@
      * Canvas APIを使って画像を生成する
      */
     const generateImage = async (playerData, bestList, recentList) => {
-        // ここに提供されたPythonコードを参考にCanvas APIでの描画処理を実装します。
-        // 以下はレイアウトの骨子です。
+        // This part of the function (canvas setup and drawing) remains the same.
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         const WIDTH = 1200, PADDING = 10, HEADER_HEIGHT = 120;
@@ -139,24 +138,24 @@
         const calcListHeight = (list) => {
             if (!list.length) return 0;
             const rows = Math.ceil(list.length / COLS);
-            return 40 + (rows * (BLOCK_HEIGHT + PADDING)); // 40はタイトル分
+            return 40 + (rows * (BLOCK_HEIGHT + PADDING)); // 40 is for the title
         };
 
         canvas.width = WIDTH;
         canvas.height = HEADER_HEIGHT + calcListHeight(bestList) + calcListHeight(recentList);
         
-        // 背景
+        // Background
         ctx.fillStyle = '#f0f0f0';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // ヘッダー
+        // Header
         ctx.fillStyle = '#333';
         ctx.font = 'bold 28px sans-serif';
         ctx.fillText(`${playerData.name} (Rating: ${playerData.rating})`, PADDING, 40);
         ctx.font = '16px sans-serif';
         ctx.fillText(`Generated: ${new Date().toLocaleString()}`, PADDING, 70);
 
-        // ジャケット画像の読み込み
+        // Load jacket images
         const allSongs = [...bestList, ...recentList];
         const imagePromises = allSongs.map(song => new Promise(resolve => {
             if (!song.jacketUrl) {
@@ -164,14 +163,14 @@
                 return;
             }
             const img = new Image();
-            img.crossOrigin = "anonymous"; // CORS対策
+            img.crossOrigin = "anonymous"; // CORS
             img.onload = () => resolve({ ...song, image: img });
-            img.onerror = () => resolve({ ...song, image: null }); // 失敗しても継続
-            img.src = song.jacketUrl.replace('http://', 'https://'); // httpsに統一
+            img.onerror = () => resolve({ ...song, image: null }); // Continue on failure
+            img.src = song.jacketUrl.replace('http://', 'https://'); // Use https
         }));
         const songsWithImages = await Promise.all(imagePromises);
 
-        // 楽曲リスト描画関数
+        // Song list drawing function
         const renderSongList = (title, list, startY) => {
             ctx.fillStyle = '#222';
             ctx.font = 'bold 20px sans-serif';
@@ -183,14 +182,14 @@
                 const x = PADDING + col * (BLOCK_WIDTH + PADDING);
                 const y = startY + 40 + row * (BLOCK_HEIGHT + PADDING);
 
-                // ブロック背景
+                // Block background
                 ctx.fillStyle = song.difficulty === 'ULTIMA' ? '#ffc0cb' : '#fff';
                 ctx.strokeStyle = '#ccc';
                 ctx.lineWidth = 1;
                 ctx.fillRect(x, y, BLOCK_WIDTH, BLOCK_HEIGHT);
                 ctx.strokeRect(x, y, BLOCK_WIDTH, BLOCK_HEIGHT);
 
-                // ジャケット
+                // Jacket
                 if (song.image) {
                     ctx.drawImage(song.image, x + 5, y + 5, BLOCK_WIDTH - 10, BLOCK_WIDTH - 10);
                 } else {
@@ -198,7 +197,7 @@
                     ctx.fillRect(x + 5, y + 5, BLOCK_WIDTH - 10, BLOCK_WIDTH - 10);
                 }
                 
-                // テキスト
+                // Text
                 ctx.fillStyle = '#000';
                 ctx.font = '12px sans-serif';
                 const titleText = song.title.length > 15 ? song.title.substring(0, 14) + '…' : song.title;
@@ -218,17 +217,58 @@
         renderSongList("BEST枠", songsWithImages.slice(0, bestList.length), bestStartY);
         renderSongList("新曲枠", songsWithImages.slice(bestList.length), recentStartY);
         
-        // 結果表示
+        // --- MODIFICATION START ---
+        // Instead of opening a new window, display the result in the overlay.
         const dataUrl = canvas.toDataURL('image/png');
-        const newWindow = window.open();
-        newWindow.document.write(`
-            <html>
-                <head><title>CHUNITHM Rating Result</title></head>
-                <body style="margin:0; background:#333;">
-                    <img src="${dataUrl}" alt="Rating Image" style="max-width:100%;">
-                </body>
-            </html>
-        `);
+        
+        // Find the overlay created at the start of the script
+        const overlay = document.querySelector('div[style*="z-index: 9999"]');
+        if (overlay) {
+            // Clear the "Loading..." message
+            overlay.innerHTML = ''; 
+
+            // Add styles for the result view
+            overlay.style.alignItems = 'flex-start'; // Align to top
+            overlay.style.overflowY = 'auto'; // Allow scrolling
+
+            // Create image element
+            const resultImage = document.createElement('img');
+            resultImage.src = dataUrl;
+            resultImage.style.maxWidth = '90%';
+            resultImage.style.margin = '20px auto'; // Add some margin
+            resultImage.style.display = 'block';
+
+            // Create a close button
+            const closeButton = document.createElement('button');
+            closeButton.textContent = 'Close';
+            closeButton.style.cssText = `
+                position: fixed;
+                top: 10px;
+                right: 20px;
+                padding: 10px 20px;
+                font-size: 16px;
+                cursor: pointer;
+                background-color: #fff;
+                color: #333;
+                border: 1px solid #ccc;
+                border-radius: 5px;
+            `;
+
+            // Close function
+            const closeOverlay = () => document.body.removeChild(overlay);
+            
+            closeButton.onclick = closeOverlay;
+            overlay.onclick = (e) => {
+                // Close only if clicking the background, not the image itself
+                if (e.target === overlay) {
+                    closeOverlay();
+                }
+            };
+            
+            overlay.appendChild(resultImage);
+            overlay.appendChild(closeButton);
+        }
+        // --- MODIFICATION END ---
     };
 
     // --- メイン処理 ---
