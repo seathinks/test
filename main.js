@@ -3,12 +3,10 @@
     'use strict';
 
     // --- 設定項目 ---
-    const GITHUB_USER = "seathinks";
-    const GITHUB_REPO = "test";
+    // GitHub Pagesのリポジトリに合わせてURLを変更してください
+    const GITHUB_USER = "seathinks"; // あなたのGitHubユーザー名
+    const GITHUB_REPO = "test"; // あなたのリポジトリ名
     const CONST_DATA_URL = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/chunirec.json`;
-    // (変更点) フォントファイルのURLを追加
-    const FONT_URL = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/keifont.ttf`;
-    const FONT_FAMILY_NAME = 'KeiFont'; // CSS内で使用するフォント名
 
     // --- 定数 ---
     const BASE_URL = "https://new.chunithm-net.com/chuni-mobile/html/mobile/";
@@ -70,7 +68,7 @@
                 score_str: form.querySelector('.text_b').innerText,
                 score_int: parseInt(form.querySelector('.text_b').innerText.replace(/,/g, ''), 10),
                 difficulty: difficulty,
-                params: {
+                params: { // 詳細ページ取得用のパラメータ
                     idx: form.querySelector('input[name="idx"]').value,
                     token: form.querySelector('input[name="token"]').value,
                     genre: form.querySelector('input[name="genre"]').value,
@@ -96,24 +94,31 @@
         const artist = doc.querySelector('.play_musicdata_artist')?.innerText || 'N/A';
         const jacketUrl = doc.querySelector('.play_jacket_img img')?.src || '';
 
+        // --- FINAL CORRECTED LOGIC ---
         let playCount = 'N/A';
         const difficultyMap = { '0': 'basic', '1': 'advanced', '2': 'expert', '3': 'master', '4': 'ultima' };
         const diffSelector = `.music_box.bg_${difficultyMap[params.diff]}`;
         const difficultyBlock = doc.querySelector(diffSelector);
 
         if (difficultyBlock) {
+            // Find all of the data rows within the difficulty block
             const dataRows = difficultyBlock.querySelectorAll('.block_underline.ptb_5');
             for (const row of dataRows) {
                 const titleElement = row.querySelector('.musicdata_score_title');
+                
+                // Check if this specific row contains the text "プレイ回数"
                 if (titleElement && titleElement.innerText.includes('プレイ回数')) {
+                    // If it does, find the score number within that same row
                     const countElement = row.querySelector('.musicdata_score_num .text_b');
                     if (countElement) {
                         playCount = countElement.innerText;
                     }
-                    break;
+                    break; // Exit the loop since we've found the correct row
                 }
             }
         }
+        // --- END OF LOGIC ---
+
         return { artist, jacketUrl, playCount };
     };
 
@@ -126,11 +131,11 @@
     const calculateRating = (score, constant) => {
         if (!constant) return 0.0;
         constant = parseFloat(constant);
-        if (score >= 1009000) return constant + 2.15;
-        if (score >= 1007500) return constant + 2.0 + (score - 1007500) * 0.0001;
-        if (score >= 1005000) return constant + 1.5 + (score - 1005000) * 0.0002;
-        if (score >= 1000000) return constant + 1.0 + (score - 1000000) * 0.0001;
-        if (score >= 975000)  return constant + (score - 975000) / 25000;
+        if (score >= 1009000) return constant + 2.15; // SSS+ (LUMINOUS以降)
+        if (score >= 1007500) return constant + 2.0 + (score - 1007500) * 0.0001; // SSS
+        if (score >= 1005000) return constant + 1.5 + (score - 1005000) * 0.0002; // SS+
+        if (score >= 1000000) return constant + 1.0 + (score - 1000000) * 0.0001; // SS
+        if (score >= 975000)  return constant + (score - 975000) / 25000;         // S
         if (score >= 950000)  return constant - 1.5 + (score - 950000) / 25000 * 1.5;
         if (score >= 925000)  return constant - 3.0 + (score - 925000) / 25000 * 1.5;
         if (score >= 900000)  return constant - 5.0 + (score - 900000) / 25000 * 2.0;
@@ -143,36 +148,68 @@
      * @returns {Object} - ランク名と色のオブジェクト
      */
     const getRankInfo = (score) => {
-        if (score >= 1009000) return { rank: "SSS+", color: "#FFD700" };
+        if (score >= 1009000) return { rank: "SSS+", color: "#FFD700" }; // Gold for SSS+
         if (score >= 1007500) return { rank: "SSS",  color: "#ffdf75" };
-        if (score >= 1005000) return { rank: "SS+",  color: "#e88aff" };
-        if (score >= 1000000) return { rank: "SS",   color: "#e88aff" };
-        if (score >= 975000)  return { rank: "S",    color: "#e88aff" };
-        if (score >= 950000)  return { rank: "AAA",  color: "#f44336" };
+        if (score >= 1005000) return { rank: "SS+",  color: "#e88aff" }; // Purple for SS+
+        if (score >= 1000000) return { rank: "SS",   color: "#e88aff" }; // Purple for SS
+        if (score >= 975000)  return { rank: "S",    color: "#e88aff" }; // Purple for S
+        if (score >= 950000)  return { rank: "AAA",  color: "#f44336" }; // Red for AAA/AA/A
         if (score >= 925000)  return { rank: "AA",   color: "#f44336" };
         if (score >= 900000)  return { rank: "A",    color: "#f44336" };
-        if (score >= 800000)  return { rank: "BBB",  color: "#2196F3" };
+        if (score >= 800000)  return { rank: "BBB",  color: "#2196F3" }; // Blue for BBB/BB/B
         if (score >= 700000)  return { rank: "BB",   color: "#2196F3" };
         if (score >= 600000)  return { rank: "B",    color: "#2196F3" };
-        if (score >= 500000)  return { rank: "C",    color: "#795548" };
-        return { rank: "D", color: "#9E9E9E" };
+        if (score >= 500000)  return { rank: "C",    color: "#795548" }; // Brown for C
+        return { rank: "D", color: "#9E9E9E" }; // Grey for D
     };
 
-    
     /**
-     * Canvas APIを使って画像を生成する
+     * 角丸の四角形を描画するヘルパー関数
+     * @param {CanvasRenderingContext2D} ctx - Canvasの2Dコンテキスト
+     * @param {number} x - X座標
+     * @param {number} y - Y座標
+     * @param {number} width - 幅
+     * @param {number} height - 高さ
+     * @param {number} radius - 角丸の半径
+     */
+    const drawRoundRect = (ctx, x, y, width, height, radius) => {
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + width - radius, y);
+        ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+        ctx.lineTo(x + width, y + height - radius);
+        ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+        ctx.lineTo(x + radius, y + height);
+        ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+    };
+
+    /**
+     * Canvas APIを使って画像を生成する (新デザイン版)
      */
     const generateImage = async (playerData, bestList, recentList) => {
-        // (変更点) けいフォントを読み込む
-        updateMessage("フォントをダウンロード中...");
-        const keifont = new FontFace(FONT_FAMILY_NAME, `url(${FONT_URL})`);
-        await keifont.load();
-        document.fonts.add(keifont);
-        updateMessage("画像を生成中...");
+        // --- フォントの読み込み ---
+        // メイン処理の最初でフォントを読み込んでおくことを推奨
+        await document.fonts.load('bold 20px "Noto Sans JP"');
+        await document.fonts.load('20px "Noto Sans JP"');
+
 
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
 
+        /**
+         * 指定された幅でテキストを改行描画するヘルパー関数 (中央揃え対応)
+         * @param {CanvasRenderingContext2D} context - Canvasの2Dコンテキスト
+         * @param {string} text - 描画するテキスト
+         * @param {number} x - 描画エリアの左端X座標
+         * @param {number} y - 描画を開始するY座標
+         * @param {number} maxWidth - 描画エリアの最大幅
+         * @param {number} lineHeight - 行の高さ
+         * @param {string} align - 'left' または 'center'
+         * @returns {object} - { finalY: 描画後の最終的なY座標, lines: 描画した行数 }
+         */
         const wrapText = (context, text, x, y, maxWidth, lineHeight, align = 'left') => {
             const words = text.split('');
             let line = '';
@@ -212,42 +249,63 @@
             return total / list.length;
         };
 
-        const WIDTH = 1200, PADDING = 20, HEADER_HEIGHT = 160;
+        // --- レイアウト定数 ---
+        const WIDTH = 1200, PADDING = 25, HEADER_HEIGHT = 160;
         const COLS = 5;
         const BLOCK_WIDTH = (WIDTH - PADDING * (COLS + 1)) / COLS;
         const JACKET_SIZE = BLOCK_WIDTH * 0.85;
-        const BLOCK_HEIGHT = 380;
+        const BLOCK_HEIGHT = 400; // 少し高さを増やす
+        const FONT_FAMILY = '"Noto Sans JP", sans-serif';
 
         const calcListHeight = (list) => {
             if (!list.length) return 0;
             const rows = Math.ceil(list.length / COLS);
-            return 40 + (rows * (BLOCK_HEIGHT + PADDING));
+            return 50 + (rows * (BLOCK_HEIGHT + PADDING));
         };
 
         canvas.width = WIDTH;
-        canvas.height = HEADER_HEIGHT + calcListHeight(bestList) + calcListHeight(recentList);
+        canvas.height = HEADER_HEIGHT + calcListHeight(bestList) + calcListHeight(recentList) + PADDING;
 
-        ctx.fillStyle = '#313131';
+        // --- 背景描画 (グラデーション) ---
+        const bgGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        bgGradient.addColorStop(0, '#1c0f2e'); // 深い紫
+        bgGradient.addColorStop(1, '#3a1d5a'); // 少し明るい紫
+        ctx.fillStyle = bgGradient;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        ctx.fillStyle = '#FFFFFF';
-        // (変更点) フォント指定を 'KeiFont' に変更
-        ctx.font = `bold 32px ${FONT_FAMILY_NAME}, sans-serif`;
-        ctx.fillText(playerData.name, PADDING, 50);
 
-        ctx.font = `bold 24px ${FONT_FAMILY_NAME}, sans-serif`;
+        // --- ヘッダー描画 ---
+        ctx.font = `bold 36px ${FONT_FAMILY}`;
+        ctx.fillStyle = '#FFFFFF';
+        // 発光効果 (グロー)
+        ctx.shadowColor = 'rgba(255, 255, 255, 0.7)';
+        ctx.shadowBlur = 10;
+        ctx.fillText(playerData.name, PADDING, 60);
+        ctx.shadowBlur = 0; // グローをリセット
+
+        ctx.font = `bold 28px ${FONT_FAMILY}`;
         ctx.textAlign = 'right';
-        ctx.fillText(`PLAYER RATING: ${playerData.rating}`, WIDTH - PADDING, 50);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText(`PLAYER RATING: `, WIDTH - PADDING - 150, 60);
+
+        // レーティング値に特別な色とグローを適用
+        ctx.fillStyle = '#00FFFF'; // シアン
+        ctx.shadowColor = 'rgba(0, 255, 255, 0.8)';
+        ctx.shadowBlur = 15;
+        ctx.fillText(playerData.rating, WIDTH - PADDING, 60);
+        ctx.shadowBlur = 0;
+
 
         const bestAvg = calculateAverageRating(bestList);
         const recentAvg = calculateAverageRating(recentList);
 
-        ctx.font = `20px ${FONT_FAMILY_NAME}, sans-serif`;
-        ctx.fillStyle = '#C8C8C8';
-        ctx.fillText(`BEST枠 平均: ${bestAvg.toFixed(4)}`, WIDTH - PADDING, 90);
-        ctx.fillText(`新曲枠 平均: ${recentAvg.toFixed(4)}`, WIDTH - PADDING, 120);
+        ctx.font = `20px ${FONT_FAMILY}`;
+        ctx.fillStyle = '#D1C4E9'; // 薄いラベンダー色
+        ctx.fillText(`BEST枠 平均: ${bestAvg.toFixed(4)}`, WIDTH - PADDING, 105);
+        ctx.fillText(`新曲枠 平均: ${recentAvg.toFixed(4)}`, WIDTH - PADDING, 135);
         ctx.textAlign = 'left';
 
+        // --- 画像の事前読み込み ---
         const allSongs = [...bestList, ...recentList];
         const imagePromises = allSongs.map(song => new Promise(resolve => {
             if (!song.jacketUrl) { resolve({ ...song, image: null }); return; }
@@ -259,95 +317,133 @@
         }));
         const songsWithImages = await Promise.all(imagePromises);
 
+        // --- 楽曲リスト描画関数 ---
         const renderSongList = (title, list, startY) => {
             ctx.fillStyle = '#FFFFFF';
-            ctx.font = `bold 20px ${FONT_FAMILY_NAME}, sans-serif`;
-            ctx.fillText(title, PADDING, startY + 25);
+            ctx.font = `bold 24px ${FONT_FAMILY}`;
+            ctx.fillText(title, PADDING, startY + 30);
 
             list.forEach((song, i) => {
                 const row = Math.floor(i / COLS);
                 const col = i % COLS;
                 const x = PADDING + col * (BLOCK_WIDTH + PADDING);
-                const y = startY + 40 + row * (BLOCK_HEIGHT + PADDING);
+                const y = startY + 50 + row * (BLOCK_HEIGHT + PADDING);
 
-                ctx.fillStyle = 'rgba(54, 54, 54, 0.9)';
-                ctx.strokeStyle = '#555';
+                // --- カード背景 ---
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
                 ctx.lineWidth = 1;
-                ctx.fillRect(x, y, BLOCK_WIDTH, BLOCK_HEIGHT);
-                ctx.strokeRect(x, y, BLOCK_WIDTH, BLOCK_HEIGHT);
+                // カード自体にシャドウを適用して浮いているように見せる
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                ctx.shadowBlur = 15;
+                ctx.shadowOffsetX = 5;
+                ctx.shadowOffsetY = 5;
 
-                const rankInfo = getRankInfo(song.score_int);
+                drawRoundRect(ctx, x, y, BLOCK_WIDTH, BLOCK_HEIGHT, 15);
+                ctx.fill();
+                ctx.stroke();
 
+                // シャドウをリセット
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 0;
+
+
+                // --- ジャケット ---
                 const jacket_x = x + (BLOCK_WIDTH - JACKET_SIZE) / 2;
-                const jacket_y = y + 15;
+                const jacket_y = y + 20;
                 if (song.image) {
+                    // ジャケットにも角丸と枠線
+                    ctx.save();
+                    drawRoundRect(ctx, jacket_x, jacket_y, JACKET_SIZE, JACKET_SIZE, 10);
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.clip(); // これ以降の描画を角丸の内側のみに制限
                     ctx.drawImage(song.image, jacket_x, jacket_y, JACKET_SIZE, JACKET_SIZE);
+                    ctx.restore(); // clipを解除
                 } else {
                     ctx.fillStyle = '#222';
-                    ctx.fillRect(jacket_x, jacket_y, JACKET_SIZE, JACKET_SIZE);
+                    drawRoundRect(ctx, jacket_x, jacket_y, JACKET_SIZE, JACKET_SIZE, 10);
+                    ctx.fill();
                 }
-                
-                let current_y = jacket_y + JACKET_SIZE + 28;
+
+                // --- テキスト描画 ---
+                let current_y = jacket_y + JACKET_SIZE + 30;
                 const text_x_padded = x + 15;
                 const text_width = BLOCK_WIDTH - 30;
                 const titleLineHeight = 22;
 
+                // 曲名
                 ctx.fillStyle = '#FFFFFF';
-                ctx.font = `bold 17px ${FONT_FAMILY_NAME}, sans-serif`;
+                ctx.font = `bold 17px ${FONT_FAMILY}`;
                 const titleInfo = wrapText(ctx, song.title, text_x_padded, current_y, text_width, titleLineHeight, 'center');
                 current_y = titleInfo.finalY;
-                if (titleInfo.lines === 1) {
+                if (titleInfo.lines === 1) { // 常に2行分の高さを確保
                     current_y += titleLineHeight;
                 }
 
                 current_y += 28;
 
-                const scoreText = `${song.score_str} [${rankInfo.rank}]`;
-                ctx.font = `bold 20px ${FONT_FAMILY_NAME}, sans-serif`;
+                // スコア
+                const rankInfo = getRankInfo(song.score_int);
+                const scoreText = `${song.score_str}`;
+                ctx.font = `bold 24px ${FONT_FAMILY}`;
                 ctx.fillStyle = rankInfo.color;
+                // ランクに応じてグロー効果
+                if (rankInfo.rank === "SSS+" || rankInfo.rank === "SSS") {
+                    ctx.shadowColor = rankInfo.color;
+                    ctx.shadowBlur = 10;
+                }
                 const scoreWidth = ctx.measureText(scoreText).width;
                 const score_x = x + (BLOCK_WIDTH - scoreWidth) / 2;
                 ctx.fillText(scoreText, score_x, current_y);
+                ctx.shadowBlur = 0;
 
+                // ランク
+                ctx.font = `bold 16px ${FONT_FAMILY}`;
+                ctx.fillText(`[${rankInfo.rank}]`, score_x + scoreWidth + 5, current_y);
+
+
+                current_y += 38;
+
+                // --- データ行の描画 ---
+                const drawDataRow = (label, value, y_pos, valueColor = '#FFFFFF', valueFont = `bold 18px ${FONT_FAMILY}`) => {
+                    ctx.font = `16px ${FONT_FAMILY}`;
+                    ctx.fillStyle = '#B0A5C8'; // ラベルの色
+                    ctx.fillText(label, text_x_padded, y_pos);
+
+                    ctx.textAlign = 'right';
+                    ctx.font = valueFont;
+                    ctx.fillStyle = valueColor;
+                    ctx.fillText(value, x + BLOCK_WIDTH - 15, y_pos);
+                    ctx.textAlign = 'left';
+                };
+                
+                drawDataRow('定数', song.const.toFixed(2), current_y);
+                current_y += 30;
+                drawDataRow('プレイ回数', song.playCount, current_y);
                 current_y += 32;
 
-                ctx.font = `16px ${FONT_FAMILY_NAME}, sans-serif`;
-                ctx.fillStyle = '#E0E0E0';
-                ctx.fillText('定数', text_x_padded, current_y);
-                ctx.textAlign = 'right';
-                ctx.font = `bold 18px ${FONT_FAMILY_NAME}, sans-serif`;
-                ctx.fillText(song.const.toFixed(2), x + BLOCK_WIDTH - 15, current_y);
-                ctx.textAlign = 'left';
-
-                current_y += 30;
-
-                ctx.font = `16px ${FONT_FAMILY_NAME}, sans-serif`;
-                ctx.fillStyle = '#E0E0E0';
-                ctx.fillText('RATE', text_x_padded, current_y);
-                ctx.textAlign = 'right';
-                ctx.font = `bold 20px ${FONT_FAMILY_NAME}, sans-serif`;
-                ctx.fillStyle = '#81D4FA';
-                ctx.fillText(song.rating.toFixed(4), x + BLOCK_WIDTH - 15, current_y);
-                ctx.textAlign = 'left';
-
-                current_y += 30;
-                
-                ctx.font = `16px ${FONT_FAMILY_NAME}, sans-serif`;
-                ctx.fillStyle = '#E0E0E0';
-                ctx.fillText('プレイ回数', text_x_padded, current_y);
-                ctx.textAlign = 'right';
-                ctx.font = `bold 18px ${FONT_FAMILY_NAME}, sans-serif`;
-                ctx.fillText(song.playCount, x + BLOCK_WIDTH - 15, current_y);
-                ctx.textAlign = 'left';
+                // RATEは目立たせる
+                drawDataRow('RATE', song.rating.toFixed(4), current_y, '#81D4FA', `bold 22px ${FONT_FAMILY}`);
             });
         };
 
         const bestStartY = HEADER_HEIGHT;
         const recentStartY = bestStartY + calcListHeight(bestList);
 
-        renderSongList("BEST枠", songsWithImages.slice(0, bestList.length), bestStartY);
-        renderSongList("新曲枠", songsWithImages.slice(bestList.length), recentStartY);
+        renderSongList("BEST", songsWithImages.slice(0, bestList.length), bestStartY);
+        renderSongList("RECENT", songsWithImages.slice(bestList.length), recentStartY);
         
+        // --- フッターにクレジット表示 ---
+        ctx.font = `14px ${FONT_FAMILY}`;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.textAlign = 'center';
+        ctx.fillText('Generated by CHUNITHM Rating Image Generator', canvas.width / 2, canvas.height - 15);
+
+
         const dataUrl = canvas.toDataURL('image/png');
         const overlay = document.querySelector('div[style*="z-index: 9999"]');
         if (overlay) {
@@ -360,13 +456,15 @@
             resultImage.style.maxWidth = '90%';
             resultImage.style.margin = '20px auto';
             resultImage.style.display = 'block';
-            
+            resultImage.style.borderRadius = '10px';
+            resultImage.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+
             const buttonContainer = document.createElement('div');
             buttonContainer.style.cssText = `position: fixed; top: 10px; right: 20px; z-index: 10001;`;
 
             const saveButton = document.createElement('button');
             saveButton.textContent = '画像を保存';
-            saveButton.style.cssText = `padding: 10px 20px; font-size: 16px; cursor: pointer; background-color: #4CAF50; color: white; border: none; border-radius: 5px; margin-right: 10px; font-family: ${FONT_FAMILY_NAME}, sans-serif;`;
+            saveButton.style.cssText = `padding: 10px 20px; font-size: 16px; cursor: pointer; background-color: #4CAF50; color: white; border: none; border-radius: 5px; margin-right: 10px;`;
             saveButton.onclick = () => {
                 const a = document.createElement('a');
                 a.href = dataUrl;
@@ -378,11 +476,11 @@
 
             const closeButton = document.createElement('button');
             closeButton.textContent = '閉じる';
-            closeButton.style.cssText = `padding: 10px 20px; font-size: 16px; cursor: pointer; background-color: #f44336; color: white; border: none; border-radius: 5px; font-family: ${FONT_FAMILY_NAME}, sans-serif;`;
+            closeButton.style.cssText = `padding: 10px 20px; font-size: 16px; cursor: pointer; background-color: #f44336; color: white; border: none; border-radius: 5px;`;
 
             const closeOverlay = () => document.body.removeChild(overlay);
             closeButton.onclick = closeOverlay;
-            
+
             buttonContainer.appendChild(saveButton);
             buttonContainer.appendChild(closeButton);
 
@@ -396,21 +494,24 @@
         updateMessage("プレイヤー情報を取得中...");
         const playerDoc = await fetchDocument(URL_PLAYER_DATA);
 
+        // --- RATING SCRAPING FIX START ---
+        // 画像からレーティング数値を抽出する
         let ratingString = '';
         const ratingImages = playerDoc.querySelectorAll('.player_rating_num_block img');
         ratingImages.forEach(img => {
             const src = img.src;
-            const lastChar = src.charAt(src.length - 5);
+            const lastChar = src.charAt(src.length - 5); // "num_X.png" の "X" を取得
             if (lastChar === 'a') {
                 ratingString += '.';
             } else {
                 ratingString += lastChar;
             }
         });
+        // --- RATING SCRAPING FIX END ---
 
         const playerData = {
             name: playerDoc.querySelector('.player_name_in').innerText,
-            rating: ratingString,
+            rating: ratingString, // 修正したレーティング文字列を使用
         };
 
         updateMessage("譜面定数データをダウンロード中...");
