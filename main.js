@@ -335,8 +335,8 @@
 
         await generateImage(playerData, finalBestList, finalRecentList);
 
-        updateMessage("完了！");
-        document.body.removeChild(overlay);
+        //updateMessage("完了！");
+        //document.body.removeChild(overlay);
 
     } catch (error) {
         console.error("ブックマークレットの実行中にエラーが発生しました:", error);
