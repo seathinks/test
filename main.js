@@ -141,6 +141,28 @@
         if (score >= 900000)  return constant - 5.0 + (score - 900000) / 25000 * 2.0;
         return 0.0;
     };
+
+    /**
+     * スコアに応じたランクと色を取得する
+     * @param {number} score - スコア
+     * @returns {Object} - ランク名と色のオブジェクト
+     */
+    const getRankInfo = (score) => {
+        if (score >= 1009000) return { rank: "SSS+", color: "#FFD700" }; // Gold for SSS+
+        if (score >= 1007500) return { rank: "SSS",  color: "#ffdf75" };
+        if (score >= 1005000) return { rank: "SS+",  color: "#e88aff" }; // Purple for SS+
+        if (score >= 1000000) return { rank: "SS",   color: "#e88aff" }; // Purple for SS
+        if (score >= 975000)  return { rank: "S",    color: "#e88aff" }; // Purple for S
+        if (score >= 950000)  return { rank: "AAA",  color: "#f44336" }; // Red for AAA/AA/A
+        if (score >= 925000)  return { rank: "AA",   color: "#f44336" };
+        if (score >= 900000)  return { rank: "A",    color: "#f44336" };
+        if (score >= 800000)  return { rank: "BBB",  color: "#2196F3" }; // Blue for BBB/BB/B
+        if (score >= 700000)  return { rank: "BB",   color: "#2196F3" };
+        if (score >= 600000)  return { rank: "B",    color: "#2196F3" };
+        if (score >= 500000)  return { rank: "C",    color: "#795548" }; // Brown for C
+        return { rank: "D", color: "#9E9E9E" }; // Grey for D
+    };
+
     
     /**
      * Canvas APIを使って画像を生成する
@@ -148,10 +170,13 @@
     const generateImage = async (playerData, bestList, recentList) => {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
+
+        // --- Layout Constants ---
         const WIDTH = 1200, PADDING = 10, HEADER_HEIGHT = 120;
         const COLS = 5;
         const BLOCK_WIDTH = (WIDTH - PADDING * (COLS + 1)) / COLS;
-        const BLOCK_HEIGHT = BLOCK_WIDTH * 1.3;
+        const JACKET_SIZE = BLOCK_WIDTH * 0.7; // Smaller jacket size
+        const BLOCK_HEIGHT = 280; // Adjusted fixed height for the new layout
         
         const calcListHeight = (list) => {
             if (!list.length) return 0;
@@ -162,21 +187,21 @@
         canvas.width = WIDTH;
         canvas.height = HEADER_HEIGHT + calcListHeight(bestList) + calcListHeight(recentList);
         
-        ctx.fillStyle = '#f0f0f0';
+        // Background
+        ctx.fillStyle = '#313131'; // Darker background
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        ctx.fillStyle = '#333';
+        // Header
+        ctx.fillStyle = '#FFFFFF';
         ctx.font = 'bold 28px sans-serif';
         ctx.fillText(`${playerData.name} (Rating: ${playerData.rating})`, PADDING, 40);
         ctx.font = '16px sans-serif';
         ctx.fillText(`Generated: ${new Date().toLocaleString()}`, PADDING, 70);
 
+        // Load images
         const allSongs = [...bestList, ...recentList];
         const imagePromises = allSongs.map(song => new Promise(resolve => {
-            if (!song.jacketUrl) {
-                resolve({ ...song, image: null });
-                return;
-            }
+            if (!song.jacketUrl) { resolve({ ...song, image: null }); return; }
             const img = new Image();
             img.crossOrigin = "anonymous";
             img.onload = () => resolve({ ...song, image: img });
@@ -185,8 +210,9 @@
         }));
         const songsWithImages = await Promise.all(imagePromises);
 
+        // --- RENDER FUNCTION ---
         const renderSongList = (title, list, startY) => {
-            ctx.fillStyle = '#222';
+            ctx.fillStyle = '#FFFFFF';
             ctx.font = 'bold 20px sans-serif';
             ctx.fillText(title, PADDING, startY + 25);
             
@@ -196,38 +222,60 @@
                 const x = PADDING + col * (BLOCK_WIDTH + PADDING);
                 const y = startY + 40 + row * (BLOCK_HEIGHT + PADDING);
 
-                ctx.fillStyle = song.difficulty === 'ULTIMA' ? '#ffc0cb' : '#fff';
-                ctx.strokeStyle = '#ccc';
+                // Block background
+                ctx.fillStyle = 'rgba(74, 74, 74, 0.8)';
+                ctx.strokeStyle = '#555';
                 ctx.lineWidth = 1;
                 ctx.fillRect(x, y, BLOCK_WIDTH, BLOCK_HEIGHT);
                 ctx.strokeRect(x, y, BLOCK_WIDTH, BLOCK_HEIGHT);
 
-                if (song.image) {
-                    ctx.drawImage(song.image, x + 5, y + 5, BLOCK_WIDTH - 10, BLOCK_WIDTH - 10);
-                } else {
-                    ctx.fillStyle = '#666';
-                    ctx.fillRect(x + 5, y + 5, BLOCK_WIDTH - 10, BLOCK_WIDTH - 10);
-                }
-                
-                ctx.fillStyle = '#000';
-                ctx.font = '12px sans-serif';
-                const titleText = song.title.length > 15 ? song.title.substring(0, 14) + '…' : song.title;
-                ctx.fillText(titleText, x + 5, y + BLOCK_WIDTH + 10);
-                
-                ctx.font = 'bold 14px sans-serif';
-                ctx.fillText(`${song.score_str}`, x + 5, y + BLOCK_WIDTH + 30);
+                // --- MODIFIED DRAWING LOGIC ---
+                // 1. Get Rank Info
+                const rankInfo = getRankInfo(song.score_int);
 
-                // --- ADDED PLAY COUNT DISPLAY ---
+                // 2. Draw Jacket (smaller and centered)
+                const jacket_x = x + (BLOCK_WIDTH - JACKET_SIZE) / 2;
+                const jacket_y = y + 15;
+                if (song.image) {
+                    ctx.drawImage(song.image, jacket_x, jacket_y, JACKET_SIZE, JACKET_SIZE);
+                } else {
+                    ctx.fillStyle = '#222';
+                    ctx.fillRect(jacket_x, jacket_y, JACKET_SIZE, JACKET_SIZE);
+                }
+
+                // 3. Position text below the jacket
+                let text_y = jacket_y + JACKET_SIZE + 20;
+
+                // Title
+                ctx.fillStyle = '#FFFFFF';
+                ctx.font = '14px sans-serif';
+                const titleText = song.title.length > 13 ? song.title.substring(0, 12) + '…' : song.title;
+                ctx.fillText(titleText, x + 10, text_y);
+                text_y += 22;
+
+                // Score [Rank]
+                ctx.fillStyle = rankInfo.color;
+                ctx.font = 'bold 16px sans-serif';
+                ctx.fillText(`${song.score_str} [${rankInfo.rank}]`, x + 10, text_y);
+
+                // Play Count
                 ctx.font = '12px sans-serif';
-                ctx.fillStyle = '#555';
+                ctx.fillStyle = '#CCCCCC';
                 ctx.textAlign = 'right';
-                ctx.fillText(`▶${song.playCount}`, x + BLOCK_WIDTH - 5, y + BLOCK_WIDTH + 30);
-                ctx.textAlign = 'left'; // Reset alignment
-                // --- END OF ADDITION ---
-                
-                ctx.fillStyle = '#d9534f';
-                ctx.font = 'bold 12px sans-serif';
-                ctx.fillText(`RATING: ${song.rating.toFixed(2)}`, x + 5, y + BLOCK_WIDTH + 50);
+                ctx.fillText(`▶${song.playCount}`, x + BLOCK_WIDTH - 10, text_y);
+                ctx.textAlign = 'left';
+                text_y += 28;
+
+                // Const
+                ctx.fillStyle = '#FFFFFF';
+                ctx.font = 'bold 15px sans-serif';
+                ctx.fillText(`CONST: `, x + 10, text_y);
+                ctx.fillText(song.const.toFixed(2), x + 80, text_y);
+                text_y += 20;
+
+                // Rating
+                ctx.fillText(`RATING: `, x + 10, text_y);
+                ctx.fillText(song.rating.toFixed(2), x + 80, text_y);
             });
         };
         
@@ -237,8 +285,8 @@
         renderSongList("BEST枠", songsWithImages.slice(0, bestList.length), bestStartY);
         renderSongList("新曲枠", songsWithImages.slice(bestList.length), recentStartY);
         
+        // --- Display Logic (No changes here) ---
         const dataUrl = canvas.toDataURL('image/png');
-        
         const overlay = document.querySelector('div[style*="z-index: 9999"]');
         if (overlay) {
             overlay.innerHTML = ''; 
@@ -252,17 +300,11 @@
             resultImage.style.display = 'block';
             
             const buttonContainer = document.createElement('div');
-            buttonContainer.style.cssText = `
-                position: fixed; top: 10px; right: 20px; z-index: 10001;
-            `;
+            buttonContainer.style.cssText = `position: fixed; top: 10px; right: 20px; z-index: 10001;`;
 
             const saveButton = document.createElement('button');
             saveButton.textContent = '画像を保存';
-            saveButton.style.cssText = `
-                padding: 10px 20px; font-size: 16px; cursor: pointer;
-                background-color: #4CAF50; color: white; border: none;
-                border-radius: 5px; margin-right: 10px;
-            `;
+            saveButton.style.cssText = `padding: 10px 20px; font-size: 16px; cursor: pointer; background-color: #4CAF50; color: white; border: none; border-radius: 5px; margin-right: 10px;`;
             saveButton.onclick = () => {
                 const a = document.createElement('a');
                 a.href = dataUrl;
@@ -274,11 +316,7 @@
 
             const closeButton = document.createElement('button');
             closeButton.textContent = '閉じる';
-            closeButton.style.cssText = `
-                padding: 10px 20px; font-size: 16px; cursor: pointer;
-                background-color: #f44336; color: white; border: none;
-                border-radius: 5px;
-            `;
+            closeButton.style.cssText = `padding: 10px 20px; font-size: 16px; cursor: pointer; background-color: #f44336; color: white; border: none; border-radius: 5px;`;
 
             const closeOverlay = () => document.body.removeChild(overlay);
             closeButton.onclick = closeOverlay;
