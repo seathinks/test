@@ -171,24 +171,51 @@
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
 
+        /**
+         * 指定された幅でテキストを改行描画するヘルパー関数
+         * @param {CanvasRenderingContext2D} context - Canvasの2Dコンテキスト
+         * @param {string} text - 描画するテキスト
+         * @param {number} x - X座標
+         * @param {number} y - Y座標
+         * @param {number} maxWidth - 最大幅
+         * @param {number} lineHeight - 行の高さ
+         * @returns {number} - 描画後の最終的なY座標
+         */
+        const wrapText = (context, text, x, y, maxWidth, lineHeight) => {
+            const words = text.split('');
+            let line = '';
+            let currentY = y;
+
+            for (let n = 0; n < words.length; n++) {
+                const testLine = line + words[n];
+                const metrics = context.measureText(testLine);
+                const testWidth = metrics.width;
+                if (testWidth > maxWidth && n > 0) {
+                    context.fillText(line, x, currentY);
+                    line = words[n];
+                    currentY += lineHeight;
+                } else {
+                    line = testLine;
+                }
+            }
+            context.fillText(line, x, currentY);
+            return currentY;
+        };
+
+
         const calculateAverageRating = (list) => {
             if (!list || list.length === 0) return 0.0;
             const total = list.reduce((sum, song) => sum + song.rating, 0);
             return total / list.length;
         };
-        
-        // --- 新レイアウト定数 ---
-        const WIDTH = 1200;
-        const PADDING = 20;
-        const HEADER_HEIGHT = 160;
-        const COLS = 3; // 列数を3に変更（お好みで2などに調整可能）
-        
-        // --- カードの内部レイアウト ---
+
+        // --- レイアウト定数 (変更点) ---
+        const WIDTH = 1200, PADDING = 20, HEADER_HEIGHT = 160; // PADDINGを増加
+        const COLS = 5;
         const BLOCK_WIDTH = (WIDTH - PADDING * (COLS + 1)) / COLS;
-        const BLOCK_PADDING = 20; // カード内部の余白
-        const JACKET_SIZE = BLOCK_WIDTH - (BLOCK_PADDING * 2);
-        const BLOCK_HEIGHT = 500; // カードの高さを大幅に増加
-        
+        const JACKET_SIZE = BLOCK_WIDTH * 0.85; // ジャケットを少し大きく
+        const BLOCK_HEIGHT = 380; // カードの高さを大幅に増加
+
         const calcListHeight = (list) => {
             if (!list.length) return 0;
             const rows = Math.ceil(list.length / COLS);
@@ -197,11 +224,11 @@
 
         canvas.width = WIDTH;
         canvas.height = HEADER_HEIGHT + calcListHeight(bestList) + calcListHeight(recentList);
-        
+
         ctx.fillStyle = '#313131';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // --- ヘッダー描画 (変更なし) ---
+        // --- ヘッダー描画 ---
         ctx.fillStyle = '#FFFFFF';
         ctx.font = 'bold 32px sans-serif';
         ctx.fillText(playerData.name, PADDING, 50);
@@ -219,7 +246,6 @@
         ctx.fillText(`新曲枠 平均: ${recentAvg.toFixed(4)}`, WIDTH - PADDING, 120);
         ctx.textAlign = 'left';
 
-        // --- 画像の事前読み込み (変更なし) ---
         const allSongs = [...bestList, ...recentList];
         const imagePromises = allSongs.map(song => new Promise(resolve => {
             if (!song.jacketUrl) { resolve({ ...song, image: null }); return; }
@@ -231,142 +257,113 @@
         }));
         const songsWithImages = await Promise.all(imagePromises);
 
-        // --- テキスト改行描画ヘルパー関数 ---
-        const wrapText = (context, text, x, y, maxWidth, lineHeight) => {
-            const words = text.split('');
-            let line = '';
-            let lineCount = 0;
-            
-            for(let n = 0; n < words.length; n++) {
-                const testLine = line + words[n];
-                const metrics = context.measureText(testLine);
-                const testWidth = metrics.width;
-                if (testWidth > maxWidth && n > 0) {
-                    context.fillText(line, x, y);
-                    line = words[n];
-                    y += lineHeight;
-                    lineCount++;
-                } else {
-                    line = testLine;
-                }
-            }
-            context.fillText(line, x, y);
-            return lineCount + 1; // 描画した行数を返す
-        };
-
-
-        // --- 楽曲リスト描画関数 (★大幅に修正) ---
+        // --- 楽曲リスト描画関数 (変更点) ---
         const renderSongList = (title, list, startY) => {
             ctx.fillStyle = '#FFFFFF';
-            ctx.font = 'bold 22px sans-serif';
-            ctx.fillText(title, PADDING, startY + 28);
-            
+            ctx.font = 'bold 20px sans-serif';
+            ctx.fillText(title, PADDING, startY + 25);
+
             list.forEach((song, i) => {
                 const row = Math.floor(i / COLS);
                 const col = i % COLS;
                 const x = PADDING + col * (BLOCK_WIDTH + PADDING);
-                const y = startY + 45 + row * (BLOCK_HEIGHT + PADDING);
+                const y = startY + 40 + row * (BLOCK_HEIGHT + PADDING);
 
-                // --- カード背景 ---
-                ctx.fillStyle = '#212121'; // 少し明るい背景色
-                ctx.strokeStyle = '#424242';
+                ctx.fillStyle = 'rgba(54, 54, 54, 0.9)'; // 少し背景を暗く
+                ctx.strokeStyle = '#555';
                 ctx.lineWidth = 1;
-                // 角丸四角形
-                ctx.beginPath();
-                ctx.moveTo(x + 10, y);
-                ctx.lineTo(x + BLOCK_WIDTH - 10, y);
-                ctx.quadraticCurveTo(x + BLOCK_WIDTH, y, x + BLOCK_WIDTH, y + 10);
-                ctx.lineTo(x + BLOCK_WIDTH, y + BLOCK_HEIGHT - 10);
-                ctx.quadraticCurveTo(x + BLOCK_WIDTH, y + BLOCK_HEIGHT, x + BLOCK_WIDTH - 10, y + BLOCK_HEIGHT);
-                ctx.lineTo(x + 10, y + BLOCK_HEIGHT);
-                ctx.quadraticCurveTo(x, y + BLOCK_HEIGHT, x, y + BLOCK_HEIGHT - 10);
-                ctx.lineTo(x, y + 10);
-                ctx.quadraticCurveTo(x, y, x + 10, y);
-                ctx.closePath();
-                ctx.fill();
-                ctx.stroke();
+                ctx.fillRect(x, y, BLOCK_WIDTH, BLOCK_HEIGHT);
+                ctx.strokeRect(x, y, BLOCK_WIDTH, BLOCK_HEIGHT);
 
+                const rankInfo = getRankInfo(song.score_int);
 
-                // --- ジャケット画像 ---
-                const jacket_x = x + BLOCK_PADDING;
-                const jacket_y = y + BLOCK_PADDING;
+                const jacket_x = x + (BLOCK_WIDTH - JACKET_SIZE) / 2;
+                const jacket_y = y + 15;
                 if (song.image) {
                     ctx.drawImage(song.image, jacket_x, jacket_y, JACKET_SIZE, JACKET_SIZE);
                 } else {
-                    ctx.fillStyle = '#111';
+                    ctx.fillStyle = '#222';
                     ctx.fillRect(jacket_x, jacket_y, JACKET_SIZE, JACKET_SIZE);
                 }
 
-                // --- テキスト描画エリア ---
-                const text_x = x + BLOCK_PADDING;
-                let text_y = jacket_y + JACKET_SIZE + 30; // ジャケット画像下の開始Y座標
-                const text_maxWidth = BLOCK_WIDTH - (BLOCK_PADDING * 2);
+                // --- テキスト描画（新レイアウト）---
+                let current_y = jacket_y + JACKET_SIZE + 28;
+                const text_x = x + 15;
+                const text_width = BLOCK_WIDTH - 30;
 
-                // 1. 曲名（改行対応）
+                // 曲名 (改行対応)
                 ctx.fillStyle = '#FFFFFF';
-                ctx.font = 'bold 22px sans-serif';
-                ctx.textAlign = 'left';
-                const titleLineHeight = 30;
-                const titleLines = wrapText(ctx, song.title, text_x, text_y, text_maxWidth, titleLineHeight);
-                text_y += titleLines * titleLineHeight + 10; // 曲名の高さ分Y座標をずらす
+                ctx.font = 'bold 17px sans-serif';
+                current_y = wrapText(ctx, song.title, text_x, current_y, text_width, 22);
 
-                // 2. スコア & ランク
-                const rankInfo = getRankInfo(song.score_int);
+                current_y += 28; // 曲名とスコアの間の余白
+
+                // スコア
+                ctx.font = '16px sans-serif';
+                ctx.fillStyle = '#E0E0E0';
+                ctx.fillText('スコア', text_x, current_y);
+                ctx.textAlign = 'right';
+                ctx.font = 'bold 18px sans-serif';
                 ctx.fillStyle = rankInfo.color;
-                ctx.font = 'bold 26px sans-serif';
-                ctx.fillText(`スコア: ${song.score_str} [${rankInfo.rank}]`, text_x, text_y);
-                text_y += 40;
+                ctx.fillText(`${song.score_str} [${rankInfo.rank}]`, x + BLOCK_WIDTH - 15, current_y);
+                ctx.textAlign = 'left';
 
-                // 3. 定数、レート、プレイ回数
+                current_y += 30;
+
+                // 定数
+                ctx.font = '16px sans-serif';
                 ctx.fillStyle = '#E0E0E0';
-                ctx.font = '22px sans-serif';
+                ctx.fillText('定数', text_x, current_y);
+                ctx.textAlign = 'right';
+                ctx.font = 'bold 18px sans-serif';
+                ctx.fillText(song.const.toFixed(2), x + BLOCK_WIDTH - 15, current_y);
+                ctx.textAlign = 'left';
 
-                // 線で区切る
-                ctx.strokeStyle = '#424242';
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                ctx.moveTo(text_x, text_y - 15);
-                ctx.lineTo(text_x + text_maxWidth, text_y - 15);
-                ctx.stroke();
+                current_y += 30;
 
-                ctx.fillText(`定数:`, text_x, text_y);
-                ctx.fillText(song.const.toFixed(2), text_x + 100, text_y);
-                text_y += 35;
-
-                ctx.font = 'bold 22px sans-serif';
-                ctx.fillStyle = '#81D4FA';// 明るい水色
-                ctx.fillText(`RATE:`, text_x, text_y);
-                ctx.fillText(song.rating.toFixed(4), text_x + 100, text_y);
-                text_y += 35;
-
-                ctx.font = '22px sans-serif';
+                // RATE
+                ctx.font = '16px sans-serif';
                 ctx.fillStyle = '#E0E0E0';
-                ctx.fillText(`プレイ回数:`, text_x, text_y);
-                ctx.fillText(song.playCount, text_x + 140, text_y);
+                ctx.fillText('RATE', text_x, current_y);
+                ctx.textAlign = 'right';
+                ctx.font = 'bold 20px sans-serif';
+                ctx.fillStyle = '#81D4FA'; // 明るい青色
+                ctx.fillText(song.rating.toFixed(4), x + BLOCK_WIDTH - 15, current_y);
+                ctx.textAlign = 'left';
+
+                current_y += 30;
+                
+                // プレイ回数
+                ctx.font = '16px sans-serif';
+                ctx.fillStyle = '#E0E0E0';
+                ctx.fillText('プレイ回数', text_x, current_y);
+                ctx.textAlign = 'right';
+                ctx.font = 'bold 18px sans-serif';
+                ctx.fillText(song.playCount, x + BLOCK_WIDTH - 15, current_y);
+                ctx.textAlign = 'left';
 
             });
         };
-        
+
         const bestStartY = HEADER_HEIGHT;
         const recentStartY = bestStartY + calcListHeight(bestList);
-        
+
         renderSongList("BEST枠", songsWithImages.slice(0, bestList.length), bestStartY);
         renderSongList("新曲枠", songsWithImages.slice(bestList.length), recentStartY);
-        
-        // --- 画像表示処理 (変更なし) ---
+
         const dataUrl = canvas.toDataURL('image/png');
         const overlay = document.querySelector('div[style*="z-index: 9999"]');
         if (overlay) {
-            overlay.innerHTML = ''; 
+            overlay.innerHTML = '';
             overlay.style.alignItems = 'flex-start';
             overlay.style.overflowY = 'auto';
 
             const resultImage = document.createElement('img');
             resultImage.src = dataUrl;
-            resultImage.style.maxWidth = '95%';
+            resultImage.style.maxWidth = '90%';
             resultImage.style.margin = '20px auto';
             resultImage.style.display = 'block';
-            
+
             const buttonContainer = document.createElement('div');
             buttonContainer.style.cssText = `position: fixed; top: 10px; right: 20px; z-index: 10001;`;
 
@@ -388,7 +385,7 @@
 
             const closeOverlay = () => document.body.removeChild(overlay);
             closeButton.onclick = closeOverlay;
-            
+
             buttonContainer.appendChild(saveButton);
             buttonContainer.appendChild(closeButton);
 
