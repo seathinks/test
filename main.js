@@ -176,13 +176,18 @@
             const total = list.reduce((sum, song) => sum + song.rating, 0);
             return total / list.length;
         };
-
-        // --- レイアウト定数 ---
-        const WIDTH = 1200, PADDING = 15, HEADER_HEIGHT = 160;
-        const COLS = 5;
+        
+        // --- 新レイアウト定数 ---
+        const WIDTH = 1200;
+        const PADDING = 20;
+        const HEADER_HEIGHT = 160;
+        const COLS = 3; // 列数を3に変更（お好みで2などに調整可能）
+        
+        // --- カードの内部レイアウト ---
         const BLOCK_WIDTH = (WIDTH - PADDING * (COLS + 1)) / COLS;
-        const JACKET_SIZE = BLOCK_WIDTH * 0.7;
-        const BLOCK_HEIGHT = 290; // 新レイアウトに合わせて高さを調整
+        const BLOCK_PADDING = 20; // カード内部の余白
+        const JACKET_SIZE = BLOCK_WIDTH - (BLOCK_PADDING * 2);
+        const BLOCK_HEIGHT = 500; // カードの高さを大幅に増加
         
         const calcListHeight = (list) => {
             if (!list.length) return 0;
@@ -196,7 +201,7 @@
         ctx.fillStyle = '#313131';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // --- ヘッダー描画 ---
+        // --- ヘッダー描画 (変更なし) ---
         ctx.fillStyle = '#FFFFFF';
         ctx.font = 'bold 32px sans-serif';
         ctx.fillText(playerData.name, PADDING, 50);
@@ -214,6 +219,7 @@
         ctx.fillText(`新曲枠 平均: ${recentAvg.toFixed(4)}`, WIDTH - PADDING, 120);
         ctx.textAlign = 'left';
 
+        // --- 画像の事前読み込み (変更なし) ---
         const allSongs = [...bestList, ...recentList];
         const imagePromises = allSongs.map(song => new Promise(resolve => {
             if (!song.jacketUrl) { resolve({ ...song, image: null }); return; }
@@ -225,77 +231,119 @@
         }));
         const songsWithImages = await Promise.all(imagePromises);
 
-        // --- 楽曲リスト描画関数 ---
+        // --- テキスト改行描画ヘルパー関数 ---
+        const wrapText = (context, text, x, y, maxWidth, lineHeight) => {
+            const words = text.split('');
+            let line = '';
+            let lineCount = 0;
+            
+            for(let n = 0; n < words.length; n++) {
+                const testLine = line + words[n];
+                const metrics = context.measureText(testLine);
+                const testWidth = metrics.width;
+                if (testWidth > maxWidth && n > 0) {
+                    context.fillText(line, x, y);
+                    line = words[n];
+                    y += lineHeight;
+                    lineCount++;
+                } else {
+                    line = testLine;
+                }
+            }
+            context.fillText(line, x, y);
+            return lineCount + 1; // 描画した行数を返す
+        };
+
+
+        // --- 楽曲リスト描画関数 (★大幅に修正) ---
         const renderSongList = (title, list, startY) => {
             ctx.fillStyle = '#FFFFFF';
-            ctx.font = 'bold 20px sans-serif';
-            ctx.fillText(title, PADDING, startY + 25);
+            ctx.font = 'bold 22px sans-serif';
+            ctx.fillText(title, PADDING, startY + 28);
             
             list.forEach((song, i) => {
                 const row = Math.floor(i / COLS);
                 const col = i % COLS;
                 const x = PADDING + col * (BLOCK_WIDTH + PADDING);
-                const y = startY + 40 + row * (BLOCK_HEIGHT + PADDING);
+                const y = startY + 45 + row * (BLOCK_HEIGHT + PADDING);
 
-                ctx.fillStyle = 'rgba(74, 74, 74, 0.8)';
-                ctx.strokeStyle = '#555';
+                // --- カード背景 ---
+                ctx.fillStyle = '#212121'; // 少し明るい背景色
+                ctx.strokeStyle = '#424242';
                 ctx.lineWidth = 1;
-                ctx.fillRect(x, y, BLOCK_WIDTH, BLOCK_HEIGHT);
-                ctx.strokeRect(x, y, BLOCK_WIDTH, BLOCK_HEIGHT);
+                // 角丸四角形
+                ctx.beginPath();
+                ctx.moveTo(x + 10, y);
+                ctx.lineTo(x + BLOCK_WIDTH - 10, y);
+                ctx.quadraticCurveTo(x + BLOCK_WIDTH, y, x + BLOCK_WIDTH, y + 10);
+                ctx.lineTo(x + BLOCK_WIDTH, y + BLOCK_HEIGHT - 10);
+                ctx.quadraticCurveTo(x + BLOCK_WIDTH, y + BLOCK_HEIGHT, x + BLOCK_WIDTH - 10, y + BLOCK_HEIGHT);
+                ctx.lineTo(x + 10, y + BLOCK_HEIGHT);
+                ctx.quadraticCurveTo(x, y + BLOCK_HEIGHT, x, y + BLOCK_HEIGHT - 10);
+                ctx.lineTo(x, y + 10);
+                ctx.quadraticCurveTo(x, y, x + 10, y);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
 
-                const rankInfo = getRankInfo(song.score_int);
-                
-                const jacket_x = x + (BLOCK_WIDTH - JACKET_SIZE) / 2;
-                const jacket_y = y + 15;
+
+                // --- ジャケット画像 ---
+                const jacket_x = x + BLOCK_PADDING;
+                const jacket_y = y + BLOCK_PADDING;
                 if (song.image) {
                     ctx.drawImage(song.image, jacket_x, jacket_y, JACKET_SIZE, JACKET_SIZE);
                 } else {
-                    ctx.fillStyle = '#222';
+                    ctx.fillStyle = '#111';
                     ctx.fillRect(jacket_x, jacket_y, JACKET_SIZE, JACKET_SIZE);
                 }
 
-                // --- テキスト描画（新レイアウト）---
-                let text_y = jacket_y + JACKET_SIZE + 25;
+                // --- テキスト描画エリア ---
+                const text_x = x + BLOCK_PADDING;
+                let text_y = jacket_y + JACKET_SIZE + 30; // ジャケット画像下の開始Y座標
+                const text_maxWidth = BLOCK_WIDTH - (BLOCK_PADDING * 2);
 
-                // Line 1: 曲名（左揃え）とプレイ回数（右揃え）
-                ctx.font = 'bold 16px sans-serif';
-                let titleText = song.title;
-                const availableWidth = BLOCK_WIDTH - 80; // 右側にスペースを確保
-                
-                // 文字幅を計算して省略記号(...)を追加
-                if (ctx.measureText(titleText).width > availableWidth) {
-                    while (ctx.measureText(titleText + '…').width > availableWidth) {
-                        titleText = titleText.slice(0, -1);
-                    }
-                    titleText += '…';
-                }
-                
+                // 1. 曲名（改行対応）
                 ctx.fillStyle = '#FFFFFF';
+                ctx.font = 'bold 22px sans-serif';
                 ctx.textAlign = 'left';
-                ctx.fillText(titleText, x + 10, text_y);
+                const titleLineHeight = 30;
+                const titleLines = wrapText(ctx, song.title, text_x, text_y, text_maxWidth, titleLineHeight);
+                text_y += titleLines * titleLineHeight + 10; // 曲名の高さ分Y座標をずらす
 
-                ctx.fillStyle = '#81D4FA'; // 明るい青色
-                ctx.font = '14px sans-serif';
-                ctx.textAlign = 'right';
-                ctx.fillText(`▶ ${song.playCount}`, x + BLOCK_WIDTH - 10, text_y);
-                ctx.textAlign = 'left';
-                text_y += 28;
-
-                // Line 2: スコア [ランク]
+                // 2. スコア & ランク
+                const rankInfo = getRankInfo(song.score_int);
                 ctx.fillStyle = rankInfo.color;
-                ctx.font = 'bold 20px sans-serif';
-                ctx.fillText(`${song.score_str} [${rankInfo.rank}]`, x + 10, text_y);
-                text_y += 32;
+                ctx.font = 'bold 26px sans-serif';
+                ctx.fillText(`スコア: ${song.score_str} [${rankInfo.rank}]`, text_x, text_y);
+                text_y += 40;
 
-                // Line 3 & 4: CONST と RATING
+                // 3. 定数、レート、プレイ回数
                 ctx.fillStyle = '#E0E0E0';
-                ctx.font = '15px sans-serif';
-                ctx.fillText(`CONST:`, x + 10, text_y);
-                ctx.fillText(song.const.toFixed(2), x + 90, text_y);
-                text_y += 22;
-                
-                ctx.fillText(`RATING:`, x + 10, text_y);
-                ctx.fillText(song.rating.toFixed(2), x + 90, text_y);
+                ctx.font = '22px sans-serif';
+
+                // 線で区切る
+                ctx.strokeStyle = '#424242';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(text_x, text_y - 15);
+                ctx.lineTo(text_x + text_maxWidth, text_y - 15);
+                ctx.stroke();
+
+                ctx.fillText(`定数:`, text_x, text_y);
+                ctx.fillText(song.const.toFixed(2), text_x + 100, text_y);
+                text_y += 35;
+
+                ctx.font = 'bold 22px sans-serif';
+                ctx.fillStyle = '#81D4FA';// 明るい水色
+                ctx.fillText(`RATE:`, text_x, text_y);
+                ctx.fillText(song.rating.toFixed(4), text_x + 100, text_y);
+                text_y += 35;
+
+                ctx.font = '22px sans-serif';
+                ctx.fillStyle = '#E0E0E0';
+                ctx.fillText(`プレイ回数:`, text_x, text_y);
+                ctx.fillText(song.playCount, text_x + 140, text_y);
+
             });
         };
         
@@ -305,6 +353,7 @@
         renderSongList("BEST枠", songsWithImages.slice(0, bestList.length), bestStartY);
         renderSongList("新曲枠", songsWithImages.slice(bestList.length), recentStartY);
         
+        // --- 画像表示処理 (変更なし) ---
         const dataUrl = canvas.toDataURL('image/png');
         const overlay = document.querySelector('div[style*="z-index: 9999"]');
         if (overlay) {
@@ -314,7 +363,7 @@
 
             const resultImage = document.createElement('img');
             resultImage.src = dataUrl;
-            resultImage.style.maxWidth = '90%';
+            resultImage.style.maxWidth = '95%';
             resultImage.style.margin = '20px auto';
             resultImage.style.display = 'block';
             
