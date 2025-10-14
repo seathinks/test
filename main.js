@@ -94,29 +94,30 @@
         const artist = doc.querySelector('.play_musicdata_artist')?.innerText || 'N/A';
         const jacketUrl = doc.querySelector('.play_jacket_img img')?.src || '';
 
-        // --- NEW AND CORRECTED PLAY COUNT LOGIC ---
+        // --- FINAL CORRECTED LOGIC ---
         let playCount = 'N/A';
         const difficultyMap = { '0': 'basic', '1': 'advanced', '2': 'expert', '3': 'master', '4': 'ultima' };
         const diffSelector = `.music_box.bg_${difficultyMap[params.diff]}`;
         const difficultyBlock = doc.querySelector(diffSelector);
 
         if (difficultyBlock) {
-            // Find all of the separate data containers (like HIGH SCORE, プレイ回数, etc.)
-            const dataContainers = difficultyBlock.querySelectorAll('.box14.w400');
-            for (const container of dataContainers) {
-                const titleElement = container.querySelector('.musicdata_score_title');
+            // Find all of the data rows within the difficulty block
+            const dataRows = difficultyBlock.querySelectorAll('.block_underline.ptb_5');
+            for (const row of dataRows) {
+                const titleElement = row.querySelector('.musicdata_score_title');
                 
-                // Check if this container is the one for "プレイ回数"
+                // Check if this specific row contains the text "プレイ回数"
                 if (titleElement && titleElement.innerText.includes('プレイ回数')) {
-                    const countElement = container.querySelector('.musicdata_score_num .text_b');
+                    // If it does, find the score number within that same row
+                    const countElement = row.querySelector('.musicdata_score_num .text_b');
                     if (countElement) {
                         playCount = countElement.innerText;
                     }
-                    break; // Found the right container, no need to search further
+                    break; // Exit the loop since we've found the correct row
                 }
             }
         }
-        // --- END OF NEW LOGIC ---
+        // --- END OF LOGIC ---
 
         return { artist, jacketUrl, playCount };
     };
