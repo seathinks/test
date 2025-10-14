@@ -410,6 +410,30 @@
                     ctx.fill();
                 }
 
+                // ... ジャケットを描画する if (song.image) { ... } else { ... } のブロックの直後 ...
+
+                // --- NEW: ジャケット右上に番号を追加 ---
+                const numberText = `#${i + 1}`;
+                ctx.font = `bold 30px ${FONT_FAMILY}`;
+                ctx.textAlign = 'right';
+                ctx.lineJoin = 'round'; // 縁取りの角を滑らかにする
+
+                // 縁取り（黒）
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+                ctx.lineWidth = 6;
+                const numberX = jacket_x + JACKET_SIZE - 10; // 右から10px内側
+                const numberY = jacket_y + 32;               // 上から32px内側
+                ctx.strokeText(numberText, numberX, numberY);
+
+                // 文字本体（白）
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillText(numberText, numberX, numberY);
+
+                // 設定をデフォルトに戻す
+                ctx.textAlign = 'left';
+                ctx.lineWidth = 1;
+
+
                 // --- テキスト描画 ---
                 let current_y = jacket_y + JACKET_SIZE + 30;
                 const text_x_padded = x + 15;
