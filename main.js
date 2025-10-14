@@ -93,12 +93,30 @@
 
         const artist = doc.querySelector('.play_musicdata_artist')?.innerText || 'N/A';
         const jacketUrl = doc.querySelector('.play_jacket_img img')?.src || '';
-        
-        // 選択中の難易度のプレイ回数を取得
+
+        // --- CORRECTED PLAY COUNT LOGIC START ---
+        let playCount = 'N/A';
+        // Select the container for the currently viewed difficulty (e.g., MASTER, EXPERT)
         const difficultyMap = { '0': 'basic', '1': 'advanced', '2': 'expert', '3': 'master', '4': 'ultima' };
-        const currentDiffClass = `.bg_${difficultyMap[params.diff]}`;
-        const playCountElement = doc.querySelector(`${currentDiffClass} .musicdata_score_num .text_b`);
-        const playCount = playCountElement ? playCountElement.innerText : 'N/A';
+        const diffSelector = `.music_box.bg_${difficultyMap[params.diff]}`;
+        const difficultyBlock = doc.querySelector(diffSelector);
+
+        if (difficultyBlock) {
+            // Find all title elements within that difficulty block
+            const titles = difficultyBlock.querySelectorAll('.musicdata_score_title');
+            for (const titleElement of titles) {
+                // Find the specific title element for "プレイ回数"
+                if (titleElement.innerText.trim() === 'プレイ回数') {
+                    // The actual play count is in the next sibling element
+                    const countElement = titleElement.parentElement.nextElementSibling?.querySelector('.text_b');
+                    if (countElement) {
+                        playCount = countElement.innerText;
+                    }
+                    break; // Stop searching once we've found it
+                }
+            }
+        }
+        // --- CORRECTED PLAY COUNT LOGIC END ---
 
         return { artist, jacketUrl, playCount };
     };
@@ -127,7 +145,6 @@
      * Canvas APIを使って画像を生成する
      */
     const generateImage = async (playerData, bestList, recentList) => {
-        // This part of the function (canvas setup and drawing) remains the same.
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         const WIDTH = 1200, PADDING = 10, HEADER_HEIGHT = 120;
@@ -138,24 +155,21 @@
         const calcListHeight = (list) => {
             if (!list.length) return 0;
             const rows = Math.ceil(list.length / COLS);
-            return 40 + (rows * (BLOCK_HEIGHT + PADDING)); // 40 is for the title
+            return 40 + (rows * (BLOCK_HEIGHT + PADDING));
         };
 
         canvas.width = WIDTH;
         canvas.height = HEADER_HEIGHT + calcListHeight(bestList) + calcListHeight(recentList);
         
-        // Background
         ctx.fillStyle = '#f0f0f0';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Header
         ctx.fillStyle = '#333';
         ctx.font = 'bold 28px sans-serif';
         ctx.fillText(`${playerData.name} (Rating: ${playerData.rating})`, PADDING, 40);
         ctx.font = '16px sans-serif';
         ctx.fillText(`Generated: ${new Date().toLocaleString()}`, PADDING, 70);
 
-        // Load jacket images
         const allSongs = [...bestList, ...recentList];
         const imagePromises = allSongs.map(song => new Promise(resolve => {
             if (!song.jacketUrl) {
@@ -163,14 +177,13 @@
                 return;
             }
             const img = new Image();
-            img.crossOrigin = "anonymous"; // CORS
+            img.crossOrigin = "anonymous";
             img.onload = () => resolve({ ...song, image: img });
-            img.onerror = () => resolve({ ...song, image: null }); // Continue on failure
-            img.src = song.jacketUrl.replace('http://', 'https://'); // Use https
+            img.onerror = () => resolve({ ...song, image: null });
+            img.src = song.jacketUrl.replace('http://', 'https://');
         }));
         const songsWithImages = await Promise.all(imagePromises);
 
-        // Song list drawing function
         const renderSongList = (title, list, startY) => {
             ctx.fillStyle = '#222';
             ctx.font = 'bold 20px sans-serif';
@@ -182,14 +195,12 @@
                 const x = PADDING + col * (BLOCK_WIDTH + PADDING);
                 const y = startY + 40 + row * (BLOCK_HEIGHT + PADDING);
 
-                // Block background
                 ctx.fillStyle = song.difficulty === 'ULTIMA' ? '#ffc0cb' : '#fff';
                 ctx.strokeStyle = '#ccc';
                 ctx.lineWidth = 1;
                 ctx.fillRect(x, y, BLOCK_WIDTH, BLOCK_HEIGHT);
                 ctx.strokeRect(x, y, BLOCK_WIDTH, BLOCK_HEIGHT);
 
-                // Jacket
                 if (song.image) {
                     ctx.drawImage(song.image, x + 5, y + 5, BLOCK_WIDTH - 10, BLOCK_WIDTH - 10);
                 } else {
@@ -197,7 +208,6 @@
                     ctx.fillRect(x + 5, y + 5, BLOCK_WIDTH - 10, BLOCK_WIDTH - 10);
                 }
                 
-                // Text
                 ctx.fillStyle = '#000';
                 ctx.font = '12px sans-serif';
                 const titleText = song.title.length > 15 ? song.title.substring(0, 14) + '…' : song.title;
@@ -205,8 +215,17 @@
                 
                 ctx.font = 'bold 14px sans-serif';
                 ctx.fillText(`${song.score_str}`, x + 5, y + BLOCK_WIDTH + 30);
+
+                // --- ADDED PLAY COUNT DISPLAY ---
+                ctx.font = '12px sans-serif';
+                ctx.fillStyle = '#555';
+                ctx.textAlign = 'right';
+                ctx.fillText(`▶${song.playCount}`, x + BLOCK_WIDTH - 5, y + BLOCK_WIDTH + 30);
+                ctx.textAlign = 'left'; // Reset alignment
+                // --- END OF ADDITION ---
                 
                 ctx.fillStyle = '#d9534f';
+                ctx.font = 'bold 12px sans-serif';
                 ctx.fillText(`RATING: ${song.rating.toFixed(2)}`, x + 5, y + BLOCK_WIDTH + 50);
             });
         };
@@ -231,65 +250,43 @@
             resultImage.style.margin = '20px auto';
             resultImage.style.display = 'block';
             
-            // --- NEW CODE START ---
-
-            // Create a container for the buttons for better positioning
             const buttonContainer = document.createElement('div');
             buttonContainer.style.cssText = `
-                position: fixed;
-                top: 10px;
-                right: 20px;
-                z-index: 10001;
+                position: fixed; top: 10px; right: 20px; z-index: 10001;
             `;
 
-            // Create the "Save Image" button
             const saveButton = document.createElement('button');
             saveButton.textContent = '画像を保存';
             saveButton.style.cssText = `
-                padding: 10px 20px;
-                font-size: 16px;
-                cursor: pointer;
-                background-color: #4CAF50; /* Green */
-                color: white;
-                border: none;
-                border-radius: 5px;
-                margin-right: 10px;
+                padding: 10px 20px; font-size: 16px; cursor: pointer;
+                background-color: #4CAF50; color: white; border: none;
+                border-radius: 5px; margin-right: 10px;
             `;
             saveButton.onclick = () => {
                 const a = document.createElement('a');
                 a.href = dataUrl;
-                // Add a timestamp for a unique filename
                 a.download = `chunithm-rating-${Date.now()}.png`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
             };
 
-            // Create the close button
             const closeButton = document.createElement('button');
             closeButton.textContent = '閉じる';
             closeButton.style.cssText = `
-                padding: 10px 20px;
-                font-size: 16px;
-                cursor: pointer;
-                background-color: #f44336; /* Red */
-                color: white;
-                border: none;
+                padding: 10px 20px; font-size: 16px; cursor: pointer;
+                background-color: #f44336; color: white; border: none;
                 border-radius: 5px;
             `;
 
             const closeOverlay = () => document.body.removeChild(overlay);
             closeButton.onclick = closeOverlay;
             
-            // Append buttons to the container
             buttonContainer.appendChild(saveButton);
             buttonContainer.appendChild(closeButton);
 
-            // Append elements to the overlay
             overlay.appendChild(resultImage);
-            overlay.appendChild(buttonContainer); // Add the container with both buttons
-            
-            // --- NEW CODE END ---
+            overlay.appendChild(buttonContainer);
         }
     };
 
