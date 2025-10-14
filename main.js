@@ -297,25 +297,38 @@
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
 
-        // --- ヘッダー描画 ---
-        ctx.font = `bold 36px ${FONT_FAMILY}`;
+        // --- ヘッダー描画 (新レイアウト) ---
+        // プレイヤーネームを大きく、より目立つように
+        ctx.font = `bold 48px ${FONT_FAMILY}`;
         ctx.fillStyle = '#FFFFFF';
-        // 発光効果 (グロー)
-        ctx.shadowColor = 'rgba(255, 255, 255, 0.7)';
-        ctx.shadowBlur = 10;
-        ctx.fillText(playerData.name, PADDING, 60);
-        ctx.shadowBlur = 0; // グローをリセット
-
-        ctx.font = `bold 28px ${FONT_FAMILY}`;
-        ctx.textAlign = 'right';
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillText(`PLAYER RATING: `, WIDTH - PADDING - 150, 60);
-
-        // レーティング値に特別な色とグローを適用
-        ctx.fillStyle = '#00FFFF'; // シアン
-        ctx.shadowColor = 'rgba(0, 255, 255, 0.8)';
+        ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
         ctx.shadowBlur = 15;
-        ctx.fillText(playerData.rating, WIDTH - PADDING, 60);
+        ctx.fillText(playerData.name, PADDING, 75);
+        ctx.shadowBlur = 0;
+
+        // 生成日時を追加
+        const now = new Date();
+        const timestamp = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        ctx.font = `16px ${FONT_FAMILY}`;
+        ctx.fillStyle = '#D1C4E9';
+        ctx.fillText(`Generated at: ${timestamp}`, PADDING, 110);
+
+
+        // レート表記を全体的に大きく
+        ctx.textAlign = 'right';
+
+        // "PLAYER RATING" ラベル
+        ctx.font = `bold 28px ${FONT_FAMILY}`;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText(`PLAYER RATING`, WIDTH - PADDING, 65);
+
+        // レート数値
+        ctx.font = `bold 52px ${FONT_FAMILY}`;
+        ctx.fillStyle = '#00FFFF'; // シアン
+        ctx.shadowColor = 'rgba(0, 255, 255, 0.9)';
+        ctx.shadowBlur = 20;
+        // y座標を調整してラベルと数値をいい感じに配置
+        ctx.fillText(playerData.rating, WIDTH - PADDING, 115);
         ctx.shadowBlur = 0;
 
 
@@ -323,9 +336,14 @@
         const recentAvg = calculateAverageRating(recentList);
 
         ctx.font = `20px ${FONT_FAMILY}`;
-        ctx.fillStyle = '#D1C4E9'; // 薄いラベンダー色
-        ctx.fillText(`BEST枠 平均: ${bestAvg.toFixed(4)}`, WIDTH - PADDING, 105);
-        ctx.fillText(`新曲枠 平均: ${recentAvg.toFixed(4)}`, WIDTH - PADDING, 135);
+        ctx.fillStyle = '#D1C4E9';
+        ctx.fillText(`BEST Avg: ${bestAvg.toFixed(4)}`, WIDTH - PADDING, 150);
+        ctx.fillText(`RECENT Avg: ${recentAvg.toFixed(4)}`, WIDTH - PADDING, 180);
+
+        // HEADER_HEIGHTを少し広げる必要があるので、レイアウト定数を変更
+        // この変更に合わせて、後続のリスト開始Y座標も調整される
+        HEADER_HEIGHT = 200;
+
         ctx.textAlign = 'left';
 
         // --- 画像の事前読み込み ---
@@ -443,8 +461,8 @@
                 ctx.shadowBlur = 0; // グローをリセット
 
                 // ランク
-                ctx.font = `bold 16px ${FONT_FAMILY}`;
-                ctx.fillText(`[${rankInfo.rank}]`, score_x + scoreWidth + 5, current_y);
+                //ctx.font = `bold 16px ${FONT_FAMILY}`;
+                //ctx.fillText(`[${rankInfo.rank}]`, score_x + scoreWidth + 5, current_y);
 
 
                 current_y += 38;
