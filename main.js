@@ -210,7 +210,19 @@
          * @param {string} align - 'left' または 'center'
          * @returns {object} - { finalY: 描画後の最終的なY座標, lines: 描画した行数 }
          */
-        const wrapText = (context, text, x, y, maxWidth, lineHeight, align = 'left') => {
+        /**
+         * 指定された幅でテキストを改行描画するヘルパー関数 (中央揃え・最大行数制限 対応)
+         * @param {CanvasRenderingContext2D} context - Canvasの2Dコンテキスト
+         * @param {string} text - 描画するテキスト
+         * @param {number} x - 描画エリアの左端X座標
+         * @param {number} y - 描画を開始するY座標
+         * @param {number} maxWidth - 描画エリアの最大幅
+         * @param {number} lineHeight - 行の高さ
+         * @param {string} align - 'left' または 'center'
+         * @param {number} maxLines - 描画する最大の行数 (これを超えると省略)
+         * @returns {object} - { finalY: 描画後の最終的なY座標, lines: 描画した行数 }
+         */
+        const wrapText = (context, text, x, y, maxWidth, lineHeight, align = 'left', maxLines = Infinity) => {
             const words = text.split('');
             let line = '';
             let currentY = y;
@@ -230,6 +242,17 @@
                 const metrics = context.measureText(testLine);
                 const testWidth = metrics.width;
                 if (testWidth > maxWidth && n > 0) {
+                    // --- ここからが修正箇所 ---
+                    if (lineCount >= maxLines) {
+                        // 最後の行なので、"..." をつけて強制的に終了
+                        let truncatedLine = line;
+                        while (context.measureText(truncatedLine + '…').width > maxWidth) {
+                            truncatedLine = truncatedLine.slice(0, -1);
+                        }
+                        drawLine(truncatedLine + '…', currentY);
+                        return { finalY: currentY, lines: lineCount }; // 関数を抜ける
+                    }
+                    // --- ここまで ---
                     drawLine(line, currentY);
                     line = words[n];
                     currentY += lineHeight;
@@ -268,8 +291,8 @@
 
         // --- 背景描画 (グラデーション) ---
         const bgGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-        bgGradient.addColorStop(0, '#1c0f2e'); // 深い紫
-        bgGradient.addColorStop(1, '#3a1d5a'); // 少し明るい紫
+        bgGradient.addColorStop(0, '#1a1a1a'); // ダークグレー
+        bgGradient.addColorStop(1, '#000000'); // 完全な黒
         ctx.fillStyle = bgGradient;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -378,7 +401,7 @@
                 // 曲名
                 ctx.fillStyle = '#FFFFFF';
                 ctx.font = `bold 17px ${FONT_FAMILY}`;
-                const titleInfo = wrapText(ctx, song.title, text_x_padded, current_y, text_width, titleLineHeight, 'center');
+                const titleInfo = wrapText(ctx, song.title, text_x_padded, current_y, text_width, titleLineHeight, 'center', 2); // 最大2行に設定
                 current_y = titleInfo.finalY;
                 if (titleInfo.lines === 1) { // 常に2行分の高さを確保
                     current_y += titleLineHeight;
@@ -386,20 +409,38 @@
 
                 current_y += 28;
 
-                // スコア
+                // スコアとランク
                 const rankInfo = getRankInfo(song.score_int);
-                const scoreText = `${song.score_str}`;
+                const scoreText = song.score_str;
+                const rankText = `[${rankInfo.rank}]`;
+                const gap = 8; // スコアとランクの間の隙間
+
+                // フォントサイズを適用してそれぞれの幅を計算
                 ctx.font = `bold 24px ${FONT_FAMILY}`;
-                ctx.fillStyle = rankInfo.color;
+                const scoreWidth = ctx.measureText(scoreText).width;
+                ctx.font = `bold 16px ${FONT_FAMILY}`;
+                const rankWidth = ctx.measureText(rankText).width;
+
+                // 全体の幅を計算し、描画開始位置（score_x）を決定
+                const totalWidth = scoreWidth + gap + rankWidth;
+                const score_x = x + (BLOCK_WIDTH - totalWidth) / 2;
+
                 // ランクに応じてグロー効果
                 if (rankInfo.rank === "SSS+" || rankInfo.rank === "SSS") {
                     ctx.shadowColor = rankInfo.color;
                     ctx.shadowBlur = 10;
                 }
-                const scoreWidth = ctx.measureText(scoreText).width;
-                const score_x = x + (BLOCK_WIDTH - scoreWidth) / 2;
+
+                // スコアを描画
+                ctx.font = `bold 24px ${FONT_FAMILY}`;
+                ctx.fillStyle = rankInfo.color;
                 ctx.fillText(scoreText, score_x, current_y);
-                ctx.shadowBlur = 0;
+
+                // ランクを描画
+                ctx.font = `bold 16px ${FONT_FAMILY}`;
+                ctx.fillText(rankText, score_x + scoreWidth + gap, current_y);
+
+                ctx.shadowBlur = 0; // グローをリセット
 
                 // ランク
                 ctx.font = `bold 16px ${FONT_FAMILY}`;
