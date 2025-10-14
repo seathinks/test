@@ -231,63 +231,65 @@
             resultImage.style.margin = '20px auto';
             resultImage.style.display = 'block';
             
-            // --- MODIFICATION START ---
-            
-            // Create a container for buttons
+            // --- NEW CODE START ---
+
+            // Create a container for the buttons for better positioning
             const buttonContainer = document.createElement('div');
             buttonContainer.style.cssText = `
                 position: fixed;
                 top: 10px;
                 right: 20px;
-                display: flex;
-                gap: 10px;
+                z-index: 10001;
             `;
 
-            // Generic button style
-            const buttonStyle = `
+            // Create the "Save Image" button
+            const saveButton = document.createElement('button');
+            saveButton.textContent = '画像を保存';
+            saveButton.style.cssText = `
                 padding: 10px 20px;
                 font-size: 16px;
                 cursor: pointer;
-                background-color: #fff;
-                color: #333;
-                border: 1px solid #ccc;
+                background-color: #4CAF50; /* Green */
+                color: white;
+                border: none;
                 border-radius: 5px;
+                margin-right: 10px;
             `;
-
-            // Create Save Image button
-            const saveButton = document.createElement('button');
-            saveButton.textContent = 'Save Image';
-            saveButton.style.cssText = buttonStyle;
             saveButton.onclick = () => {
                 const a = document.createElement('a');
                 a.href = dataUrl;
-                a.download = 'chunithm-rating.png';
+                // Add a timestamp for a unique filename
+                a.download = `chunithm-rating-${Date.now()}.png`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
             };
-            
-            // Create a close button
+
+            // Create the close button
             const closeButton = document.createElement('button');
-            closeButton.textContent = 'Close';
-            closeButton.style.cssText = buttonStyle;
+            closeButton.textContent = '閉じる';
+            closeButton.style.cssText = `
+                padding: 10px 20px;
+                font-size: 16px;
+                cursor: pointer;
+                background-color: #f44336; /* Red */
+                color: white;
+                border: none;
+                border-radius: 5px;
+            `;
 
-            // Close function
             const closeOverlay = () => document.body.removeChild(overlay);
-            
             closeButton.onclick = closeOverlay;
-            overlay.onclick = (e) => {
-                if (e.target === overlay) {
-                    closeOverlay();
-                }
-            };
             
-            overlay.appendChild(resultImage);
-            buttonContainer.appendChild(saveButton); // Add save button to container
-            buttonContainer.appendChild(closeButton); // Add close button to container
-            overlay.appendChild(buttonContainer); // Add container to overlay
+            // Append buttons to the container
+            buttonContainer.appendChild(saveButton);
+            buttonContainer.appendChild(closeButton);
 
-            // --- MODIFICATION END ---
+            // Append elements to the overlay
+            overlay.appendChild(resultImage);
+            overlay.appendChild(buttonContainer); // Add the container with both buttons
+            
+            // --- NEW CODE END ---
         }
     };
 
