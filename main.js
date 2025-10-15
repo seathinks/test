@@ -887,7 +887,10 @@
             updateMessage(`楽曲詳細を取得中... (${i + 1}/${allSongs.length})`, progress);
             const details = await scrapeMusicDetail(song.params);
 
-            // ... (楽曲詳細の処理は変更なし)
+            const difficultyMapToJson = { 'MASTER': 'MAS', 'EXPERT': 'EXP', 'ULTIMA': 'ULT', 'ADVANCED': 'ADV', 'BASIC': 'BAS' };
+            const diffAbbreviation = difficultyMapToJson[song.difficulty];
+            const matchedConst = constData.find(m => m.title === song.title && m.diff === diffAbbreviation)?.const;
+            const rating = calculateRating(song.score_int, matchedConst);
             
             detailedSongs.push({ ...song, ...details, 'const': matchedConst || 0.0, rating });
         }
