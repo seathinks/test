@@ -26,38 +26,132 @@
     document.body.appendChild(overlay);
 
     /**
-     * ユーザーに画像生成モードを選択させるUIを表示する
-     * @returns {Promise<string>} - 'vertical' または 'horizontal' を解決するPromise
+     * ユーザーに設定を選択させる新しいUIを表示する
+     * @returns {Promise<{mode: string, delay: number}>} - 選択されたモードと遅延時間を解決するPromise
      */
-    const askForGenerationMode = () => {
+    const askForSettings = () => {
         return new Promise(resolve => {
+            let selectedMode = null;
+            let scrapeDelay = 1.0; // 初期値 1.0秒
+
             const container = document.createElement('div');
-            container.style.textAlign = 'center';
+            container.style.cssText = `
+                background-color: rgba(40, 40, 55, 0.95);
+                padding: 40px; border-radius: 20px;
+                box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                text-align: center; width: 600px;
+            `;
 
             const title = document.createElement('h2');
-            title.textContent = '画像生成モードを選択してください';
-            title.style.cssText = 'font-size: 24px; margin-bottom: 30px; font-weight: bold;';
+            title.textContent = 'CHUNITHM 画像ジェネレーター設定';
+            title.style.cssText = 'font-size: 28px; margin-bottom: 20px; font-weight: bold; color: #E0E0E0;';
             container.appendChild(title);
 
-            const createButton = (text, mode) => {
+            const subtitle = document.createElement('p');
+            subtitle.textContent = '画像生成モードとデータ取得間隔を設定してください。';
+            subtitle.style.cssText = 'font-size: 16px; margin-bottom: 40px; color: #B0B0B0;';
+            container.appendChild(subtitle);
+
+            const delaySection = document.createElement('div');
+            delaySection.style.cssText = 'margin-bottom: 40px;';
+            const delayLabel = document.createElement('label');
+            delayLabel.textContent = '取得間隔 (秒)';
+            delayLabel.style.cssText = 'display: block; font-size: 18px; font-weight: bold; color: #D0D0D0; margin-bottom: 15px;';
+            delaySection.appendChild(delayLabel);
+            const delayControls = document.createElement('div');
+            delayControls.style.cssText = 'display: flex; justify-content: center; align-items: center;';
+            const delayValueSpan = document.createElement('span');
+            delayValueSpan.textContent = scrapeDelay.toFixed(1);
+            delayValueSpan.style.cssText = 'font-size: 24px; font-weight: bold; color: white; width: 80px;';
+            const createControlButton = (text) => {
                 const button = document.createElement('button');
                 button.textContent = text;
                 button.style.cssText = `
-                    display: inline-block; width: 200px; padding: 15px; margin: 0 15px;
-                    font-size: 18px; font-weight: bold; cursor: pointer;
-                    background-color: #4A90E2; color: white; border: none;
-                    border-radius: 8px; transition: background-color 0.3s, transform 0.1s;
+                    width: 50px; height: 50px; margin: 0 15px; font-size: 24px;
+                    cursor: pointer; background-color: #4A90E2; color: white;
+                    border: none; border-radius: 50%; transition: all 0.2s;
                 `;
                 button.onmouseover = () => button.style.backgroundColor = '#357ABD';
                 button.onmouseout = () => button.style.backgroundColor = '#4A90E2';
-                button.onmousedown = () => button.style.transform = 'scale(0.98)';
+                button.onmousedown = () => button.style.transform = 'scale(0.95)';
                 button.onmouseup = () => button.style.transform = 'scale(1)';
-                button.onclick = () => resolve(mode);
                 return button;
             };
+            const minusButton = createControlButton('-');
+            minusButton.onclick = () => {
+                if (scrapeDelay > 0) {
+                    scrapeDelay = Math.max(0, scrapeDelay - 0.5);
+                    delayValueSpan.textContent = scrapeDelay.toFixed(1);
+                }
+            };
+            const plusButton = createControlButton('+');
+            plusButton.onclick = () => {
+                if (scrapeDelay < 3) {
+                    scrapeDelay = Math.min(3, scrapeDelay + 0.5);
+                    delayValueSpan.textContent = scrapeDelay.toFixed(1);
+                }
+            };
+            delayControls.appendChild(minusButton);
+            delayControls.appendChild(delayValueSpan);
+            delayControls.appendChild(plusButton);
+            delaySection.appendChild(delayControls);
+            container.appendChild(delaySection);
 
-            container.appendChild(createButton('縦モード (Portrait)', 'vertical'));
-            container.appendChild(createButton('横モード (Landscape)', 'horizontal'));
+            const modeSection = document.createElement('div');
+            modeSection.style.cssText = 'margin-bottom: 50px;';
+            const modeLabel = document.createElement('label');
+            modeLabel.textContent = '画像生成モード';
+            modeLabel.style.cssText = 'display: block; font-size: 18px; font-weight: bold; color: #D0D0D0; margin-bottom: 15px;';
+            modeSection.appendChild(modeLabel);
+            const modeButtonsContainer = document.createElement('div');
+            modeButtonsContainer.style.cssText = 'display: flex; justify-content: center; gap: 20px;';
+            const generateButton = document.createElement('button');
+            const createModeButton = (text, mode) => {
+                const button = document.createElement('button');
+                button.textContent = text;
+                button.dataset.mode = mode;
+                button.style.cssText = `
+                    display: inline-block; width: 200px; padding: 15px;
+                    font-size: 18px; font-weight: bold; cursor: pointer;
+                    background-color: #333; color: white;
+                    border: 2px solid #555; border-radius: 8px;
+                    transition: all 0.2s;
+                `;
+                button.onclick = () => {
+                    selectedMode = mode;
+                    document.querySelectorAll('button[data-mode]').forEach(btn => {
+                        btn.style.backgroundColor = btn.dataset.mode === selectedMode ? '#4A90E2' : '#333';
+                        btn.style.borderColor = btn.dataset.mode === selectedMode ? '#6FBFFF' : '#555';
+                    });
+                    generateButton.disabled = false;
+                    generateButton.style.opacity = '1';
+                    generateButton.style.cursor = 'pointer';
+                };
+                return button;
+            };
+            modeButtonsContainer.appendChild(createModeButton('縦モード (Portrait)', 'vertical'));
+            modeButtonsContainer.appendChild(createModeButton('横モード (Landscape)', 'horizontal'));
+            modeSection.appendChild(modeButtonsContainer);
+            container.appendChild(modeSection);
+
+            generateButton.textContent = '生成開始';
+            generateButton.disabled = true;
+            generateButton.style.cssText = `
+                width: 100%; padding: 18px; font-size: 20px; font-weight: bold;
+                cursor: not-allowed; background: linear-gradient(145deg, #5cb85c, #4cae4c);
+                color: white; border: none; border-radius: 10px; transition: all 0.2s; opacity: 0.5;
+            `;
+            generateButton.onmouseover = () => { if (!generateButton.disabled) generateButton.style.background = 'linear-gradient(145deg, #4cae4c, #449d44)'; };
+            generateButton.onmouseout = () => { if (!generateButton.disabled) generateButton.style.background = 'linear-gradient(145deg, #5cb85c, #4cae4c)'; };
+            generateButton.onclick = () => {
+                if (selectedMode) {
+                    resolve({ mode: selectedMode, delay: scrapeDelay });
+                }
+            };
+            container.appendChild(generateButton);
+
+            overlay.innerHTML = '';
             overlay.appendChild(container);
         });
     };
@@ -69,6 +163,8 @@
         console.log(text);
         message.textContent = text;
     };
+
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
     /**
      * 指定されたURLからHTMLドキュメントを取得する
@@ -356,7 +452,6 @@
 
         const now = new Date();
         const timestamp = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-        // ★★★ ここを変更 ★★★
         ctx.font = `28px ${FONT_FAMILY}`;
         ctx.fillStyle = '#D1C4E9';
         ctx.fillText(`Generated at: ${timestamp}`, leftX, headerY + 220);
@@ -618,7 +713,7 @@
     
     // --- メイン処理 ---
     try {
-        const mode = await askForGenerationMode();
+        const { mode, delay } = await askForSettings();
         
         overlay.innerHTML = ''; // 選択UIを消去
         overlay.appendChild(message);
@@ -652,6 +747,13 @@
 
         for (let i = 0; i < allSongs.length; i++) {
             const song = allSongs[i];
+            
+            // 2曲目以降で、かつディレイが設定されている場合に待機する
+            if (i > 0 && delay > 0) {
+                updateMessage(`サーバー負荷軽減のため待機中... (${delay.toFixed(1)}秒) - (${i}/${allSongs.length})`);
+                await sleep(delay * 1000);
+            }
+
             updateMessage(`楽曲詳細を取得中... (${i + 1}/${allSongs.length})`);
             const details = await scrapeMusicDetail(song.params);
 
