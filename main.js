@@ -265,9 +265,9 @@
         };
 
         // --- レイアウト定数 ---
-        let WIDTH, COLS, BLOCK_WIDTH;
-        const PADDING = 25;
-        const HEADER_HEIGHT = 200;
+        let WIDTH, COLS, BLOCK_WIDTH, CENTER_GAP;
+        const PADDING = 30; // 全体の余白を少し増やす
+        const HEADER_HEIGHT = 280; // ★ ヘッダーの高さを増やす
         const BLOCK_HEIGHT = 400;
         const FONT_FAMILY = '"Noto Sans JP", sans-serif';
 
@@ -275,10 +275,11 @@
             WIDTH = 1920;
             COLS = 8;
             BLOCK_WIDTH = (WIDTH - PADDING * (COLS + 1)) / COLS;
+            CENTER_GAP = 50;
         } else { // horizontal
             COLS = 6;
             BLOCK_WIDTH = 210;
-            const CENTER_GAP = 75; // ★ BESTとRECENTの間のスペース
+            CENTER_GAP = 75;
             const gridWidth = (BLOCK_WIDTH * COLS) + (PADDING * (COLS - 1));
             WIDTH = PADDING + gridWidth + CENTER_GAP + gridWidth + PADDING;
         }
@@ -287,12 +288,12 @@
         const calcListHeight = (list, cols) => {
             if (!list.length) return 0;
             const rows = Math.ceil(list.length / cols);
-            return 50 + (rows * (BLOCK_HEIGHT + PADDING)); // 50 for title
+            return 50 + (rows * (BLOCK_HEIGHT + PADDING));
         };
         
         canvas.width = WIDTH;
         if (mode === 'vertical') {
-            canvas.height = HEADER_HEIGHT + calcListHeight(bestList, COLS) + calcListHeight(recentList, COLS) + PADDING;
+            canvas.height = HEADER_HEIGHT + calcListHeight(bestList, COLS) + CENTER_GAP + calcListHeight(recentList, COLS) + PADDING;
         } else {
             canvas.height = HEADER_HEIGHT + Math.max(calcListHeight(bestList, COLS), calcListHeight(recentList, COLS)) + PADDING;
         }
@@ -304,55 +305,82 @@
         ctx.fillStyle = bgGradient;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // --- ヘッダー描画 ---
-        ctx.font = `bold 48px ${FONT_FAMILY}`;
+        // --- ★★★ ヘッダー描画 (新デザイン) ★★★ ---
+        const headerX = PADDING / 2;
+        const headerY = PADDING / 2;
+        const headerW = WIDTH - PADDING;
+        const headerH = HEADER_HEIGHT - PADDING;
+
+        // ヘッダー背景
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.lineWidth = 1;
+        drawRoundRect(ctx, headerX, headerY, headerW, headerH, 15);
+        ctx.fill();
+        ctx.stroke();
+
+        // 左側: プレイヤー情報
+        const leftX = PADDING * 1.5;
+        ctx.font = `24px ${FONT_FAMILY}`;
+        ctx.fillStyle = '#B0A5C8'; // ラベル用の薄い色
+        ctx.fillText('PLAYER NAME', leftX, headerY + 50);
+
+        ctx.font = `bold 64px ${FONT_FAMILY}`;
         ctx.fillStyle = '#FFFFFF';
-        ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
+        ctx.shadowColor = 'rgba(255, 255, 255, 0.7)';
         ctx.shadowBlur = 15;
-        ctx.fillText(playerData.name, PADDING, 75);
+        ctx.fillText(playerData.name, leftX, headerY + 115);
         ctx.shadowBlur = 0;
 
         const now = new Date();
         const timestamp = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-        ctx.font = `16px ${FONT_FAMILY}`;
+        ctx.font = `18px ${FONT_FAMILY}`;
         ctx.fillStyle = '#D1C4E9';
-        ctx.fillText(`Generated at: ${timestamp}`, PADDING, 110);
+        ctx.fillText(`Generated at: ${timestamp}`, leftX, headerY + 160);
 
+        // 右側: レート情報
+        const rightX = WIDTH - PADDING * 1.5;
         ctx.textAlign = 'right';
-        ctx.font = `bold 28px ${FONT_FAMILY}`;
+
+        ctx.font = `bold 32px ${FONT_FAMILY}`;
         ctx.fillStyle = '#FFFFFF';
-        ctx.fillText(`PLAYER RATING`, WIDTH - PADDING, 65);
-        ctx.font = `bold 52px ${FONT_FAMILY}`;
+        ctx.fillText(`PLAYER RATING`, rightX, headerY + 60);
+
+        ctx.font = `bold 72px ${FONT_FAMILY}`;
         ctx.fillStyle = '#00FFFF';
         ctx.shadowColor = 'rgba(0, 255, 255, 0.9)';
         ctx.shadowBlur = 20;
-        ctx.fillText(playerData.rating, WIDTH - PADDING, 115);
+        ctx.fillText(playerData.rating, rightX, headerY + 130);
         ctx.shadowBlur = 0;
 
         const bestAvg = calculateAverageRating(bestList);
         const recentAvg = calculateAverageRating(recentList);
-        ctx.font = `20px ${FONT_FAMILY}`;
+        ctx.font = `bold 24px ${FONT_FAMILY}`;
         ctx.fillStyle = '#D1C4E9';
-        ctx.fillText(`BEST Avg: ${bestAvg.toFixed(4)}`, WIDTH - PADDING, 150);
-        ctx.fillText(`RECENT Avg: ${recentAvg.toFixed(4)}`, WIDTH - PADDING, 180);
+        ctx.fillText(`BEST Avg: ${bestAvg.toFixed(4)}`, rightX, headerY + 185);
+        ctx.fillText(`RECENT Avg: ${recentAvg.toFixed(4)}`, rightX, headerY + 220);
+        
         ctx.textAlign = 'left';
         
-        // --- ★★★ (横モードのみ) 境界線を描画 ★★★ ---
+        // --- 区切り線を描画 ---
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([10, 10]);
+        ctx.beginPath();
         if (mode === 'horizontal') {
             const gridWidth = (BLOCK_WIDTH * COLS) + (PADDING * (COLS - 1));
-            const CENTER_GAP = 75;
             const lineX = PADDING + gridWidth + (CENTER_GAP / 2);
-            
-            ctx.save();
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-            ctx.lineWidth = 2;
-            ctx.setLineDash([10, 10]); // 点線
-            ctx.beginPath();
             ctx.moveTo(lineX, HEADER_HEIGHT + 15);
             ctx.lineTo(lineX, canvas.height - PADDING - 30);
-            ctx.stroke();
-            ctx.restore();
+        } else { // vertical
+            const lineY = HEADER_HEIGHT + calcListHeight(bestList, COLS) + (CENTER_GAP / 2);
+            ctx.moveTo(PADDING, lineY);
+            ctx.lineTo(WIDTH - PADDING, lineY);
         }
+        ctx.stroke();
+        ctx.restore();
+
 
         // --- 画像の事前読み込み ---
         const allSongs = [...bestList, ...recentList];
@@ -505,24 +533,24 @@
 
         if (mode === 'vertical') {
             const bestStartY = HEADER_HEIGHT;
-            const recentStartY = bestStartY + calcListHeight(bestList, COLS);
+            const recentStartY = bestStartY + calcListHeight(bestList, COLS) + CENTER_GAP;
             renderSongList("BEST", songsWithImages.slice(0, bestList.length), PADDING, bestStartY, COLS, BLOCK_WIDTH);
             renderSongList("RECENT", songsWithImages.slice(bestList.length), PADDING, recentStartY, COLS, BLOCK_WIDTH);
         } else { // horizontal
             const listsStartY = HEADER_HEIGHT;
             const bestStartX = PADDING;
-            const CENTER_GAP = 75; // ★ BESTとRECENTの間のスペース
             const gridWidth = (BLOCK_WIDTH * COLS) + (PADDING * (COLS - 1));
-            const recentStartX = PADDING + gridWidth + CENTER_GAP; // ★ RECENTの開始位置を調整
+            const recentStartX = PADDING + gridWidth + CENTER_GAP;
             renderSongList("BEST", songsWithImages.slice(0, bestList.length), bestStartX, listsStartY, COLS, BLOCK_WIDTH);
             renderSongList("RECENT", songsWithImages.slice(bestList.length), recentStartX, listsStartY, COLS, BLOCK_WIDTH);
         }
         
-        // --- フッター ---
-        ctx.font = `14px ${FONT_FAMILY}`;
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-        ctx.textAlign = 'center';
-        ctx.fillText('Generated by CHUNITHM Rating Image Generator', canvas.width / 2, canvas.height - 15);
+        // --- ★★★ フッター描画 (新デザイン) ★★★ ---
+        ctx.font = `18px ${FONT_FAMILY}`;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.textAlign = 'right';
+        ctx.fillText('Generated by CHUNITHM Rating Image Generator', canvas.width - PADDING, canvas.height - PADDING + 10);
+
 
         // --- 結果表示 ---
         const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
