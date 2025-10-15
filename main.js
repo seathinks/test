@@ -389,7 +389,7 @@
         
         // --- 区切り線を描画 ---
         ctx.save();
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)'; // 少し濃く
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)'; // ← この行を変更
         ctx.lineWidth = 2;
         ctx.setLineDash([10, 10]);
         ctx.beginPath();
