@@ -357,7 +357,7 @@
         const now = new Date();
         const timestamp = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
         // ★★★ ここを変更 ★★★
-        ctx.font = `22px ${FONT_FAMILY}`;
+        ctx.font = `28px ${FONT_FAMILY}`;
         ctx.fillStyle = '#D1C4E9';
         ctx.fillText(`Generated at: ${timestamp}`, leftX, headerY + 220);
 
