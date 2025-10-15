@@ -429,52 +429,6 @@
                 ctx.lineWidth = 1;
 
 
-                // ... ランキング番号(#1, #2...)を描画するコードの直後 ...
-
-
-                // --- NEW: ジャケット左下に難易度ランクのバッジを追加 ---
-                const difficulty = song.difficulty;
-                let diffColor;
-
-                // 難易度ごとのテーマカラーを設定
-                switch (difficulty) {
-                    case 'ULTIMA':   diffColor = '#8B0000'; break; // ベースは濃い赤
-                    case 'MASTER':   diffColor = '#6a0dad'; break; // 紫
-                    case 'EXPERT':   diffColor = '#D32F2F'; break; // 赤
-                    case 'ADVANCED': diffColor = '#FBC02D'; break; // 黄色
-                    case 'BASIC':    diffColor = '#388E3C'; break; // 緑
-                    default:         diffColor = '#555555'; break; // 不明
-                }
-
-                const badgeHeight = 28;
-                const badgeWidth = 105; // テキストが収まるように少し幅広に
-                const badgeRadius = 14; // 角丸
-                const badgeX = jacket_x + 10; // ジャケット左から10px内側
-                const badgeY = jacket_y + JACKET_SIZE - badgeHeight - 10; // ジャケット下から10px内側
-
-                // バッジの背景を描画
-                ctx.fillStyle = diffColor;
-                // ULTIMAのみ特別に黒へのグラデーションを適用
-                if (difficulty === 'ULTIMA') {
-                    const grad = ctx.createLinearGradient(badgeX, badgeY, badgeX + badgeWidth, badgeY);
-                    grad.addColorStop(0, diffColor); // 濃い赤
-                    grad.addColorStop(1, '#1C1C1C');  // ほぼ黒
-                    ctx.fillStyle = grad;
-                }
-                drawRoundRect(ctx, badgeX, badgeY, badgeWidth, badgeHeight, badgeRadius);
-                ctx.fill();
-
-                // バッジ内のテキストを描画
-                // 黄色背景(ADVANCED)の時のみ、文字色を黒にして視認性を確保
-                const textColor = (difficulty === 'ADVANCED') ? '#000000' : '#FFFFFF';
-                ctx.fillStyle = textColor;
-                ctx.font = `bold 16px ${FONT_FAMILY}`;
-                ctx.textAlign = 'center';
-
-                // バッジの中央にテキストを配置
-                ctx.fillText(difficulty, badgeX + badgeWidth / 2, badgeY + 19);
-
-
                 // --- テキスト描画 ---
                 let current_y = jacket_y + JACKET_SIZE + 30;
                 const text_x_padded = x + 15;
