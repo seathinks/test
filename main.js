@@ -305,11 +305,10 @@
         }
         const JACKET_SIZE = BLOCK_WIDTH * 0.85;
 
-        // ★★★ ここから変更 ★★★
         const calcListHeight = (list, cols) => {
             if (!list.length) return 0;
             const rows = Math.ceil(list.length / cols);
-            return 70 + (rows * (BLOCK_HEIGHT + PADDING)); // タイトルエリアの高さを確保
+            return 70 + (rows * (BLOCK_HEIGHT + PADDING));
         };
         
         canvas.width = WIDTH;
@@ -346,14 +345,13 @@
         const leftX = PADDING * 1.5;
         ctx.font = `24px ${FONT_FAMILY}`;
         ctx.fillStyle = '#B0A5C8';
-        // ★ Y座標を調整
-        ctx.fillText('PLAYER NAME', leftX, headerY + 60);
+        // ★★★ Y座標を調整 ★★★
+        ctx.fillText('PLAYER NAME', leftX, headerY + 50);
 
         ctx.font = `bold 64px ${FONT_FAMILY}`;
         ctx.fillStyle = '#FFFFFF';
         ctx.shadowColor = 'rgba(255, 255, 255, 0.7)';
         ctx.shadowBlur = 15;
-        // ★ Y座標を調整
         ctx.fillText(playerData.name, leftX, headerY + 125);
         ctx.shadowBlur = 0;
 
@@ -361,8 +359,8 @@
         const timestamp = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
         ctx.font = `18px ${FONT_FAMILY}`;
         ctx.fillStyle = '#D1C4E9';
-        // ★ Y座標を調整
-        ctx.fillText(`Generated at: ${timestamp}`, leftX, headerY + 170);
+        // ★★★ Y座標を調整 ★★★
+        ctx.fillText(`Generated at: ${timestamp}`, leftX, headerY + 220);
 
         const rightX = WIDTH - PADDING * 1.5;
         ctx.textAlign = 'right';
@@ -421,7 +419,6 @@
 
         // --- 楽曲リスト描画関数 ---
         const renderSongList = (title, list, startX, startY, cols, blockWidth) => {
-            // ★★★ ここから変更 ★★★
             ctx.font = `bold 38px ${FONT_FAMILY}`;
             ctx.fillStyle = '#FFFFFF';
             ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
@@ -434,8 +431,7 @@
                 const row = Math.floor(i / cols);
                 const col = i % cols;
                 const x = startX + col * (blockWidth + PADDING);
-                const y = startY + 70 + row * (BLOCK_HEIGHT + PADDING); // ★ Y座標を調整
-                // ★★★ ここまで変更 ★★★
+                const y = startY + 70 + row * (BLOCK_HEIGHT + PADDING);
 
                 // カード背景
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
