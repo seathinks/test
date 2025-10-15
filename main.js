@@ -273,8 +273,8 @@
         };
 
         // --- レイアウト定数 ---
-        const WIDTH = 1200, PADDING = 25, HEADER_HEIGHT = 200;
-        const COLS = 5;
+        const WIDTH = 1920, PADDING = 25, HEADER_HEIGHT = 200; // 横幅を1920pxに
+        const COLS = 8; // 列数を8に
         const BLOCK_WIDTH = (WIDTH - PADDING * (COLS + 1)) / COLS;
         const JACKET_SIZE = BLOCK_WIDTH * 0.85;
         const BLOCK_HEIGHT = 400; // 少し高さを増やす
