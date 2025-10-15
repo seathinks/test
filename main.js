@@ -273,7 +273,7 @@
         };
 
         // --- レイアウト定数 ---
-        const WIDTH = 1200, PADDING = 25, HEADER_HEIGHT = 200;
+        const WIDTH = 1200, PADDING = 25, HEADER_HEIGHT = 230;
         const COLS = 5;
         const BLOCK_WIDTH = (WIDTH - PADDING * (COLS + 1)) / COLS;
         const JACKET_SIZE = BLOCK_WIDTH * 0.85;
@@ -297,9 +297,9 @@
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
 
-        // --- ヘッダー描画 (最終レイアウト) ---
+        // --- ヘッダー描画 (修正版レイアウト) ---
         // --- 左側 ---
-        // プレイヤーネーム
+        // プレイヤーネームのみを配置
         ctx.font = `bold 48px ${FONT_FAMILY}`;
         ctx.fillStyle = '#FFFFFF';
         ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
@@ -307,15 +307,8 @@
         ctx.fillText(playerData.name, PADDING, 75);
         ctx.shadowBlur = 0;
 
-        // 平均レート (左側に移動)
-        const bestAvg = calculateAverageRating(bestList);
-        const recentAvg = calculateAverageRating(recentList);
-        ctx.font = `20px ${FONT_FAMILY}`;
-        ctx.fillStyle = '#D1C4E9';
-        ctx.fillText(`BEST Avg: ${bestAvg.toFixed(4)}`, PADDING, 120);
-        ctx.fillText(`RECENT Avg: ${recentAvg.toFixed(4)}`, PADDING, 150);
-
         // --- 右側 ---
+        // レート、生成日時、平均レートをすべて右側に集約
         ctx.textAlign = 'right';
 
         // "PLAYER RATING" ラベル
@@ -331,12 +324,19 @@
         ctx.fillText(playerData.rating, WIDTH - PADDING, 115);
         ctx.shadowBlur = 0;
 
-        // 生成日時 (右側に移動)
+        // 生成日時 (レート数値の真下に配置)
         const now = new Date();
         const timestamp = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
         ctx.font = `16px ${FONT_FAMILY}`;
         ctx.fillStyle = '#D1C4E9';
-        ctx.fillText(`Generated at: ${timestamp}`, WIDTH - PADDING, 150);
+        ctx.fillText(`Generated at: ${timestamp}`, WIDTH - PADDING, 145);
+
+        // 平均レート (生成日時の下に配置)
+        const bestAvg = calculateAverageRating(bestList);
+        const recentAvg = calculateAverageRating(recentList);
+        ctx.font = `20px ${FONT_FAMILY}`;
+        ctx.fillText(`BEST Avg: ${bestAvg.toFixed(4)}`, WIDTH - PADDING, 180);
+        ctx.fillText(`RECENT Avg: ${recentAvg.toFixed(4)}`, WIDTH - PADDING, 205);
 
         // 最後にtextAlignをデフォルトに戻す
         ctx.textAlign = 'left';
