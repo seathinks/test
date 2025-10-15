@@ -56,8 +56,8 @@
                 return button;
             };
 
-            container.appendChild(createButton('縦モード (従来)', 'vertical'));
-            container.appendChild(createButton('横モード (並列)', 'horizontal'));
+            container.appendChild(createButton('縦モード (Portrait)', 'vertical'));
+            container.appendChild(createButton('横モード (Landscape)', 'horizontal'));
             overlay.appendChild(container);
         });
     };
@@ -208,12 +208,34 @@
         ctx.closePath();
     };
 
+    // ★★★ 画像を読み込むためのヘルパー関数 ★★★
+    const loadImage = (url) => {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.onload = () => resolve(img);
+            img.onerror = (err) => reject(err);
+            img.src = url;
+        });
+    };
+
     /**
      * Canvas APIを使って画像を生成する
      */
     const generateImage = async (playerData, bestList, recentList, mode) => {
         await document.fonts.load('bold 20px "Noto Sans JP"');
         await document.fonts.load('20px "Noto Sans JP"');
+        
+        // ★★★ 背景画像を読み込む ★★★
+        updateMessage("背景画像を読み込み中...");
+        const BG_BASE_URL = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/`;
+        const bgUrl = mode === 'vertical' ? `${BG_BASE_URL}bg_portrait.png` : `${BG_BASE_URL}bg_landscape.png`;
+        let backgroundImage;
+        try {
+            backgroundImage = await loadImage(bgUrl);
+        } catch (e) {
+            console.error("背景画像の読み込みに失敗しました:", e);
+        }
 
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -266,8 +288,8 @@
 
         // --- レイアウト定数 ---
         let WIDTH, COLS, BLOCK_WIDTH, CENTER_GAP;
-        const PADDING = 30; // 全体の余白を少し増やす
-        const HEADER_HEIGHT = 280; // ★ ヘッダーの高さを増やす
+        const PADDING = 30;
+        const HEADER_HEIGHT = 280;
         const BLOCK_HEIGHT = 400;
         const FONT_FAMILY = '"Noto Sans JP", sans-serif';
 
@@ -298,31 +320,35 @@
             canvas.height = HEADER_HEIGHT + Math.max(calcListHeight(bestList, COLS), calcListHeight(recentList, COLS)) + PADDING;
         }
 
-        // --- 背景描画 ---
-        const bgGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-        bgGradient.addColorStop(0, '#1a1a1a');
-        bgGradient.addColorStop(1, '#000000');
-        ctx.fillStyle = bgGradient;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // --- ★★★ 背景描画 (画像 or フォールバック) ★★★ ---
+        if (backgroundImage) {
+            ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+        } else {
+            // 画像読み込み失敗時はグラデーション背景を表示
+            const bgGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            bgGradient.addColorStop(0, '#1a1a1a');
+            bgGradient.addColorStop(1, '#000000');
+            ctx.fillStyle = bgGradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
 
-        // --- ★★★ ヘッダー描画 (新デザイン) ★★★ ---
+        // --- ヘッダー描画 (新デザイン) ---
         const headerX = PADDING / 2;
         const headerY = PADDING / 2;
         const headerW = WIDTH - PADDING;
         const headerH = HEADER_HEIGHT - PADDING;
-
-        // ヘッダー背景
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        
+        // ★ 透明度を調整
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'; 
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
         ctx.lineWidth = 1;
         drawRoundRect(ctx, headerX, headerY, headerW, headerH, 15);
         ctx.fill();
         ctx.stroke();
 
-        // 左側: プレイヤー情報
         const leftX = PADDING * 1.5;
         ctx.font = `24px ${FONT_FAMILY}`;
-        ctx.fillStyle = '#B0A5C8'; // ラベル用の薄い色
+        ctx.fillStyle = '#B0A5C8';
         ctx.fillText('PLAYER NAME', leftX, headerY + 50);
 
         ctx.font = `bold 64px ${FONT_FAMILY}`;
@@ -338,7 +364,6 @@
         ctx.fillStyle = '#D1C4E9';
         ctx.fillText(`Generated at: ${timestamp}`, leftX, headerY + 160);
 
-        // 右側: レート情報
         const rightX = WIDTH - PADDING * 1.5;
         ctx.textAlign = 'right';
 
@@ -364,7 +389,7 @@
         
         // --- 区切り線を描画 ---
         ctx.save();
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)'; // 少し濃く
         ctx.lineWidth = 2;
         ctx.setLineDash([10, 10]);
         ctx.beginPath();
@@ -381,8 +406,8 @@
         ctx.stroke();
         ctx.restore();
 
-
         // --- 画像の事前読み込み ---
+        updateMessage("ジャケット画像を読み込み中...");
         const allSongs = [...bestList, ...recentList];
         const imagePromises = allSongs.map(song => new Promise(resolve => {
             if (!song.jacketUrl) { resolve({ ...song, image: null }); return; }
@@ -406,9 +431,9 @@
                 const x = startX + col * (blockWidth + PADDING);
                 const y = startY + 50 + row * (BLOCK_HEIGHT + PADDING);
 
-                // カード背景
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                // カード背景 (★ 透明度を調整)
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
                 ctx.lineWidth = 1;
                 ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
                 ctx.shadowBlur = 15;
@@ -523,7 +548,7 @@
                     ctx.fillText(value, x + blockWidth - 15, y_pos);
                     ctx.textAlign = 'left';
                 };
-                drawDataRow('定数', song.const.toFixed(2), current_y);
+                drawDataRow('定数', song.const.toFixed(1), current_y);
                 current_y += 30;
                 drawDataRow('プレイ回数', song.playCount, current_y);
                 current_y += 32;
@@ -545,14 +570,15 @@
             renderSongList("RECENT", songsWithImages.slice(bestList.length), recentStartX, listsStartY, COLS, BLOCK_WIDTH);
         }
         
-        // --- ★★★ フッター描画 (新デザイン) ★★★ ---
+        // --- フッター描画 (新デザイン) ---
         ctx.font = `18px ${FONT_FAMILY}`;
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'; // 少し濃く
         ctx.textAlign = 'right';
         ctx.fillText('Generated by CHUNITHM Rating Image Generator', canvas.width - PADDING, canvas.height - PADDING + 10);
 
 
         // --- 結果表示 ---
+        updateMessage("画像を生成中...");
         const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
         const overlay = document.querySelector('div[style*="z-index: 9999"]');
         if (overlay) {
@@ -625,7 +651,7 @@
 
         for (let i = 0; i < allSongs.length; i++) {
             const song = allSongs[i];
-            updateMessage(`詳細情報を取得中... (${i + 1}/${allSongs.length}) ${song.title}`);
+            updateMessage(`楽曲詳細を取得中... (${i + 1}/${allSongs.length})`);
             const details = await scrapeMusicDetail(song.params);
 
             const difficultyMapToJson = { 'MASTER': 'MAS', 'EXPERT': 'EXP', 'ULTIMA': 'ULT', 'ADVANCED': 'ADV', 'BASIC': 'BAS' };
