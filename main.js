@@ -15,6 +15,9 @@
     const URL_SEND_DETAIL = BASE_URL + "record/musicGenre/sendMusicDetail/";
     const URL_DETAIL = BASE_URL + "record/musicDetail/";
 
+    // ★★★ 変更点 1: 中断フラグを定義 ★★★
+    let isAborted = false;
+
     // --- UIの準備 ---
     const overlay = document.createElement('div');
     overlay.style.cssText = `
@@ -25,15 +28,14 @@
     `;
     document.body.appendChild(overlay);
 
-    // ★★★ ここからが変更箇所です ★★★
     // 常に表示される閉じるボタンを追加
     const globalCloseButton = document.createElement('button');
-    globalCloseButton.innerHTML = '&times;'; // HTMLエンティティでバツ印を表示
+    globalCloseButton.innerHTML = '&times;';
     globalCloseButton.style.cssText = `
         position: fixed;
         top: 15px;
         right: 20px;
-        z-index: 10000; /* overlayより手前に表示 */
+        z-index: 10000;
         background: rgba(0, 0, 0, 0.4);
         color: white;
         border: 2px solid rgba(255, 255, 255, 0.5);
@@ -51,13 +53,16 @@
     globalCloseButton.onmouseout = () => { globalCloseButton.style.backgroundColor = 'rgba(0, 0, 0, 0.4)'; };
     globalCloseButton.onmousedown = () => { globalCloseButton.style.transform = 'scale(0.9)'; };
     globalCloseButton.onmouseup = () => { globalCloseButton.style.transform = 'scale(1)'; };
+
+    // ★★★ 変更点 2: ボタンクリック時にフラグを立てる ★★★
     globalCloseButton.onclick = () => {
+        isAborted = true; // 中断フラグを立てる
+        console.log("処理がユーザーによって中断されました。");
         if (document.body.contains(overlay)) {
             document.body.removeChild(overlay);
         }
     };
     overlay.appendChild(globalCloseButton);
-    // ★★★ 変更箇所ここまで ★★★
 
     /**
      * ユーザーに設定を選択させる新しいUIを表示する
@@ -65,8 +70,9 @@
      */
     const askForSettings = () => {
         return new Promise(resolve => {
+            // (この関数内のコードは変更ありません)
             let selectedMode = null;
-            let scrapeDelay = 1.0; // 初期値 1.0秒
+            let scrapeDelay = 1.0;
 
             const container = document.createElement('div');
             container.style.cssText = `
@@ -185,39 +191,26 @@
             };
             container.appendChild(generateButton);
 
-            overlay.innerHTML = ''; // Clear previous content, but keep the close button
+            overlay.innerHTML = '';
             overlay.appendChild(container);
-            overlay.appendChild(globalCloseButton); // Re-append the close button
+            overlay.appendChild(globalCloseButton);
         });
     };
-
+    
+    // (これ以降のヘルパー関数は変更ありません)
     const message = document.createElement('p');
     message.style.fontSize = "20px";
-
     const updateMessage = (text) => {
         console.log(text);
         message.textContent = text;
     };
-
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-    /**
-     * 指定されたURLからHTMLドキュメントを取得する
-     * @param {string} url - 取得先のURL
-     * @returns {Promise<Document>} - パースされたHTMLドキュメント
-     */
     const fetchDocument = async (url) => {
         const response = await fetch(url);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status} for ${url}`);
         const htmlText = await response.text();
         return new DOMParser().parseFromString(htmlText, 'text/html');
     };
-
-    /**
-     * レーティング対象曲のリストをスクレイピングする
-     * @param {string} url - Best枠またはRecent枠のURL
-     * @returns {Promise<Array<Object>>} - 曲情報の配列
-     */
     const scrapeRatingList = async (url) => {
         const doc = await fetchDocument(url);
         const songForms = doc.querySelectorAll('form[action$="sendMusicDetail/"]');
@@ -244,12 +237,6 @@
         }
         return songs;
     };
-
-    /**
-     * 曲の詳細情報をスクレイピングする
-     * @param {Object} params - 詳細ページ取得用のパラメータ
-     * @returns {Promise<Object>} - アーティスト名、ジャケットURL、プレイ回数
-     */
     const scrapeMusicDetail = async (params) => {
         const formData = new URLSearchParams();
         Object.entries(params).forEach(([key, value]) => formData.append(key, value));
@@ -280,13 +267,6 @@
         }
         return { artist, jacketUrl, playCount };
     };
-
-    /**
-     * スコアと譜面定数からレート値を計算する
-     * @param {number} score - スコア
-     * @param {number} constant - 譜面定数
-     * @returns {number} - レート値
-     */
     const calculateRating = (score, constant) => {
         if (!constant) return 0.0;
         constant = parseFloat(constant);
@@ -300,12 +280,6 @@
         if (score >= 900000)  return constant - 5.0 + (score - 900000) / 25000 * 2.0;
         return 0.0;
     };
-
-    /**
-     * スコアに応じたランクと色を取得する
-     * @param {number} score - スコア
-     * @returns {Object} - ランク名と色のオブジェクト
-     */
     const getRankInfo = (score) => {
         if (score >= 1009000) return { rank: "SSS+", color: "#FFD700" };
         if (score >= 1007500) return { rank: "SSS",  color: "#ffdf75" };
@@ -321,10 +295,6 @@
         if (score >= 500000)  return { rank: "C",    color: "#795548" };
         return { rank: "D", color: "#9E9E9E" };
     };
-
-    /**
-     * 角丸の四角形を描画するヘルパー関数
-     */
     const drawRoundRect = (ctx, x, y, width, height, radius) => {
         ctx.beginPath();
         ctx.moveTo(x + radius, y);
@@ -338,7 +308,6 @@
         ctx.quadraticCurveTo(x, y, x + radius, y);
         ctx.closePath();
     };
-
     const loadImage = (url) => {
         return new Promise((resolve, reject) => {
             const img = new Image();
@@ -348,11 +317,8 @@
             img.src = url;
         });
     };
-
-    /**
-     * Canvas APIを使って画像を生成する
-     */
     const generateImage = async (playerData, bestList, recentList, mode) => {
+        // (この関数内のコードは変更ありません)
         await document.fonts.load('bold 20px "Noto Sans JP"');
         await document.fonts.load('20px "Noto Sans JP"');
         
@@ -808,12 +774,15 @@
     try {
         const { mode, delay } = await askForSettings();
         
-        overlay.innerHTML = ''; // 選択UIを消去
+        if (isAborted) return; // 設定画面で閉じられた場合はここで終了
+        
+        overlay.innerHTML = '';
         overlay.appendChild(message);
-        overlay.appendChild(globalCloseButton); // Re-append global close button
+        overlay.appendChild(globalCloseButton);
 
         updateMessage("プレイヤー情報を取得中...");
         const playerDoc = await fetchDocument(URL_PLAYER_DATA);
+        if (isAborted) return;
 
         let ratingString = '';
         const ratingImages = playerDoc.querySelectorAll('.player_rating_num_block img');
@@ -830,23 +799,31 @@
 
         updateMessage("譜面定数データをダウンロード中...");
         const constData = await fetch(CONST_DATA_URL).then(res => res.json());
+        if (isAborted) return;
 
         updateMessage("BEST枠の曲リストを取得中...");
         const bestList = await scrapeRatingList(URL_RATING_BEST);
+        if (isAborted) return;
+        
         updateMessage("新曲枠の曲リストを取得中...");
         const recentList = await scrapeRatingList(URL_RATING_RECENT);
+        if (isAborted) return;
 
         const allSongs = [...bestList, ...recentList];
         const detailedSongs = [];
 
+        // ★★★ 変更点 3: ループ内でフラグを確認 ★★★
         for (let i = 0; i < allSongs.length; i++) {
+            if (isAborted) break; // ループを抜ける
+
             const song = allSongs[i];
             
-            // 2曲目以降で、かつディレイが設定されている場合に待機する
             if (i > 0 && delay > 0) {
                 updateMessage(`サーバー負荷軽減のため待機中... (${delay.toFixed(1)}秒) - (${i}/${allSongs.length})`);
                 await sleep(delay * 1000);
             }
+            
+            if (isAborted) break; // スリープ後にも確認
 
             updateMessage(`楽曲詳細を取得中... (${i + 1}/${allSongs.length})`);
             const details = await scrapeMusicDetail(song.params);
@@ -859,21 +836,24 @@
             detailedSongs.push({ ...song, ...details, 'const': matchedConst || 0.0, rating });
         }
         
+        if (isAborted) return; // ループが中断されたら画像生成はしない
+
         const finalBestList = detailedSongs.slice(0, bestList.length);
         const finalRecentList = detailedSongs.slice(bestList.length);
 
         await generateImage(playerData, finalBestList, finalRecentList, mode);
 
     } catch (error) {
-        // エラー発生時も閉じるボタンがクリックできるようにする
+        if (isAborted) {
+            return; // ユーザーによる中断が原因のエラーは無視
+        }
         if (!document.body.contains(overlay)) {
-             // In case the overlay was removed by an error before this point
             return;
         }
         console.error("ブックマークレットの実行中にエラーが発生しました:", error);
-        overlay.innerHTML = ''; // Clear previous content
+        overlay.innerHTML = '';
         overlay.appendChild(message);
         message.textContent = `エラー: ${error.message} (詳細はコンソールを確認してください)`;
-        overlay.appendChild(globalCloseButton); // Ensure close button is visible on error
+        overlay.appendChild(globalCloseButton);
     }
 })();
