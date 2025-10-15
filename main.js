@@ -412,69 +412,62 @@
 
                 // ...ジャケットの描画コードの直後 (ctx.restore() の後) ...
 
-                // --- NEW: 譜面難易度の帯を追加 ---
+                
+
+                // ...この後にランキング番号の描画コードが続く...
+
+                // --- NEW: ジャケット右上に番号と難易度帯を追加 ---
+                const numberText = `#${i + 1}`;
+                ctx.font = `bold 30px ${FONT_FAMILY}`;
+                
+                // 番号のサイズを測定
+                const textMetrics = ctx.measureText(numberText);
+                const textWidth = textMetrics.width;
+
+                // 帯と番号の位置を定義
+                const ribbonHeight = 38;
+                const ribbonWidth = textWidth + 20; // 番号の幅に合わせて帯の幅を調整
+                const ribbonX = jacket_x + JACKET_SIZE - ribbonWidth - 5;
+                const ribbonY = jacket_y + 5;
+                
+                // 難易度カラーを定義
                 const difficultyInfo = {
-                    ULTIMA: { bg: 'linear-gradient(135deg, #a00, #310000)', color: '#FFFFFF' }, // 濃い赤と黒のグラデーション風
-                    MASTER: { bg: '#8A2BE2', color: '#FFFFFF' }, // 紫
-                    EXPERT: { bg: '#FF4500', color: '#FFFFFF' }, // 赤 (少しオレンジ寄りで視認性UP)
-                    ADVANCED: { bg: '#FDD835', color: '#000000' }, // 黄色 (文字は黒)
-                    BASIC: { bg: '#7CB342', color: '#FFFFFF' },   // 緑
-                    UNKNOWN: { bg: '#9E9E9E', color: '#FFFFFF' }
+                    ULTIMA: { bg: 'linear-gradient(135deg, #a00, #310000)' },
+                    MASTER: { bg: '#8A2BE2' },
+                    EXPERT: { bg: '#FF4500' },
+                    ADVANCED: { bg: '#FDD835' },
+                    BASIC: { bg: '#7CB342' },
+                    UNKNOWN: { bg: '#9E9E9E' }
                 };
                 const diffStyle = difficultyInfo[song.difficulty] || difficultyInfo.UNKNOWN;
-
-                // 帯の描画
-                ctx.save();
-                drawRoundRect(ctx, jacket_x, jacket_y, JACKET_SIZE, JACKET_SIZE, 10);
-                ctx.clip(); // ジャケットの角丸に合わせて帯をクリッピング
-
-                const bannerSize = 120; // 帯の大きさ
-                ctx.beginPath();
-                ctx.moveTo(jacket_x, jacket_y);
-                ctx.lineTo(jacket_x + bannerSize, jacket_y);
-                ctx.lineTo(jacket_x, jacket_y + bannerSize);
-                ctx.closePath();
                 
-                // ULTIMAのみ特別にグラデーション
+                // 難易度カラーの帯を描画 (これが下のレイヤーになる)
+                ctx.save();
+                // ULTIMAのみグラデーション
                 if (song.difficulty === 'ULTIMA') {
-                    const grad = ctx.createLinearGradient(jacket_x, jacket_y, jacket_x + bannerSize, jacket_y + bannerSize);
-                    grad.addColorStop(0, '#a00'); // Dark Red
-                    grad.addColorStop(1, '#1a1a1a'); // Dark Grey/Black
+                    const grad = ctx.createLinearGradient(ribbonX, ribbonY, ribbonX + ribbonWidth, ribbonY);
+                    grad.addColorStop(0, '#a00');
+                    grad.addColorStop(1, '#1a1a1a');
                     ctx.fillStyle = grad;
                 } else {
                     ctx.fillStyle = diffStyle.bg;
                 }
+                drawRoundRect(ctx, ribbonX, ribbonY, ribbonWidth, ribbonHeight, 8);
                 ctx.fill();
+                ctx.restore();
 
-                // 帯の上の文字
-                ctx.font = `bold 18px ${FONT_FAMILY}`;
-                ctx.fillStyle = diffStyle.color;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                
-                // 文字を45度回転させて配置
-                ctx.translate(jacket_x + 40, jacket_y + 40);
-                ctx.rotate(-Math.PI / 4);
-                ctx.fillText(song.difficulty, 0, 0);
-                
-                ctx.restore(); // 回転やクリッピングなど、すべての設定を元に戻す
-
-                // ...この後にランキング番号の描画コードが続く...
-
-                // --- NEW: ジャケット右上に番号を追加 ---
-                const numberText = `#${i + 1}`;
-                ctx.font = `bold 30px ${FONT_FAMILY}`;
+                // 番号を描画 (これが上のレイヤーになる)
                 ctx.textAlign = 'right';
-                ctx.lineJoin = 'round'; // 縁取りの角を滑らかにする
-
-                // 縁取り（黒）
+                ctx.lineJoin = 'round';
+                const numberX = ribbonX + ribbonWidth - 10;
+                const numberY = ribbonY + ribbonHeight - 8;
+                
+                // 縁取り(黒)
                 ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
                 ctx.lineWidth = 6;
-                const numberX = jacket_x + JACKET_SIZE - 10; // 右から10px内側
-                const numberY = jacket_y + 32;               // 上から32px内側
                 ctx.strokeText(numberText, numberX, numberY);
-
-                // 文字本体（白）
+                
+                // 文字(白)
                 ctx.fillStyle = '#FFFFFF';
                 ctx.fillText(numberText, numberX, numberY);
 
