@@ -854,7 +854,10 @@
         const playerDoc = await fetchDocument(URL_PLAYER_DATA);
         if (isAborted) return;
 
-        // ... (playerDataの取得処理は変更なし)
+        const playerData = {
+            name: playerDoc.querySelector('.player_name_in').innerText,
+            rating: ratingString,
+        };
 
         updateMessage("譜面定数データをダウンロード中...", 10);
         const constData = await fetch(CONST_DATA_URL).then(res => res.json());
