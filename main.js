@@ -345,7 +345,6 @@
         const leftX = PADDING * 1.5;
         ctx.font = `24px ${FONT_FAMILY}`;
         ctx.fillStyle = '#B0A5C8';
-        // ★★★ Y座標を調整 ★★★
         ctx.fillText('PLAYER NAME', leftX, headerY + 50);
 
         ctx.font = `bold 64px ${FONT_FAMILY}`;
@@ -357,9 +356,9 @@
 
         const now = new Date();
         const timestamp = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-        ctx.font = `18px ${FONT_FAMILY}`;
+        // ★★★ ここを変更 ★★★
+        ctx.font = `22px ${FONT_FAMILY}`;
         ctx.fillStyle = '#D1C4E9';
-        // ★★★ Y座標を調整 ★★★
         ctx.fillText(`Generated at: ${timestamp}`, leftX, headerY + 220);
 
         const rightX = WIDTH - PADDING * 1.5;
