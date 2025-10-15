@@ -854,6 +854,14 @@
         const playerDoc = await fetchDocument(URL_PLAYER_DATA);
         if (isAborted) return;
 
+        let ratingString = '';
+        const ratingImages = playerDoc.querySelectorAll('.player_rating_num_block img');
+        ratingImages.forEach(img => {
+            const src = img.src;
+            const lastChar = src.charAt(src.length - 5);
+            ratingString += (lastChar === 'a') ? '.' : lastChar;
+        });
+
         const playerData = {
             name: playerDoc.querySelector('.player_name_in').innerText,
             rating: ratingString,
