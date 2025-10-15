@@ -273,7 +273,7 @@
         };
 
         // --- レイアウト定数 ---
-        const WIDTH = 1200, PADDING = 25, HEADER_HEIGHT = 230;
+        const WIDTH = 1200, PADDING = 25, HEADER_HEIGHT = 200;
         const COLS = 5;
         const BLOCK_WIDTH = (WIDTH - PADDING * (COLS + 1)) / COLS;
         const JACKET_SIZE = BLOCK_WIDTH * 0.85;
@@ -297,9 +297,8 @@
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
 
-        // --- ヘッダー描画 (修正版レイアウト) ---
-        // --- 左側 ---
-        // プレイヤーネームのみを配置
+        // --- ヘッダー描画 (新レイアウト) ---
+        // プレイヤーネームを大きく、より目立つように
         ctx.font = `bold 48px ${FONT_FAMILY}`;
         ctx.fillStyle = '#FFFFFF';
         ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
@@ -307,8 +306,15 @@
         ctx.fillText(playerData.name, PADDING, 75);
         ctx.shadowBlur = 0;
 
-        // --- 右側 ---
-        // レート、生成日時、平均レートをすべて右側に集約
+        // 生成日時を追加
+        const now = new Date();
+        const timestamp = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        ctx.font = `16px ${FONT_FAMILY}`;
+        ctx.fillStyle = '#D1C4E9';
+        ctx.fillText(`Generated at: ${timestamp}`, PADDING, 110);
+
+
+        // レート表記を全体的に大きく
         ctx.textAlign = 'right';
 
         // "PLAYER RATING" ラベル
@@ -321,24 +327,23 @@
         ctx.fillStyle = '#00FFFF'; // シアン
         ctx.shadowColor = 'rgba(0, 255, 255, 0.9)';
         ctx.shadowBlur = 20;
+        // y座標を調整してラベルと数値をいい感じに配置
         ctx.fillText(playerData.rating, WIDTH - PADDING, 115);
         ctx.shadowBlur = 0;
 
-        // 生成日時 (レート数値の真下に配置)
-        const now = new Date();
-        const timestamp = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-        ctx.font = `16px ${FONT_FAMILY}`;
-        ctx.fillStyle = '#D1C4E9';
-        ctx.fillText(`Generated at: ${timestamp}`, WIDTH - PADDING, 145);
 
-        // 平均レート (生成日時の下に配置)
         const bestAvg = calculateAverageRating(bestList);
         const recentAvg = calculateAverageRating(recentList);
-        ctx.font = `20px ${FONT_FAMILY}`;
-        ctx.fillText(`BEST Avg: ${bestAvg.toFixed(4)}`, WIDTH - PADDING, 180);
-        ctx.fillText(`RECENT Avg: ${recentAvg.toFixed(4)}`, WIDTH - PADDING, 205);
 
-        // 最後にtextAlignをデフォルトに戻す
+        ctx.font = `20px ${FONT_FAMILY}`;
+        ctx.fillStyle = '#D1C4E9';
+        ctx.fillText(`BEST Avg: ${bestAvg.toFixed(4)}`, WIDTH - PADDING, 150);
+        ctx.fillText(`RECENT Avg: ${recentAvg.toFixed(4)}`, WIDTH - PADDING, 180);
+
+        // HEADER_HEIGHTを少し広げる必要があるので、レイアウト定数を変更
+        // この変更に合わせて、後続のリスト開始Y座標も調整される
+        
+
         ctx.textAlign = 'left';
 
         // --- 画像の事前読み込み ---
@@ -405,7 +410,56 @@
                     ctx.fill();
                 }
 
-                // ... ジャケットを描画する if (song.image) { ... } else { ... } のブロックの直後 ...
+                // ...ジャケットの描画コードの直後 (ctx.restore() の後) ...
+
+                // --- NEW: 譜面難易度の帯を追加 ---
+                const difficultyInfo = {
+                    ULTIMA: { bg: 'linear-gradient(135deg, #a00, #310000)', color: '#FFFFFF' }, // 濃い赤と黒のグラデーション風
+                    MASTER: { bg: '#8A2BE2', color: '#FFFFFF' }, // 紫
+                    EXPERT: { bg: '#FF4500', color: '#FFFFFF' }, // 赤 (少しオレンジ寄りで視認性UP)
+                    ADVANCED: { bg: '#FDD835', color: '#000000' }, // 黄色 (文字は黒)
+                    BASIC: { bg: '#7CB342', color: '#FFFFFF' },   // 緑
+                    UNKNOWN: { bg: '#9E9E9E', color: '#FFFFFF' }
+                };
+                const diffStyle = difficultyInfo[song.difficulty] || difficultyInfo.UNKNOWN;
+
+                // 帯の描画
+                ctx.save();
+                drawRoundRect(ctx, jacket_x, jacket_y, JACKET_SIZE, JACKET_SIZE, 10);
+                ctx.clip(); // ジャケットの角丸に合わせて帯をクリッピング
+
+                const bannerSize = 120; // 帯の大きさ
+                ctx.beginPath();
+                ctx.moveTo(jacket_x, jacket_y);
+                ctx.lineTo(jacket_x + bannerSize, jacket_y);
+                ctx.lineTo(jacket_x, jacket_y + bannerSize);
+                ctx.closePath();
+                
+                // ULTIMAのみ特別にグラデーション
+                if (song.difficulty === 'ULTIMA') {
+                    const grad = ctx.createLinearGradient(jacket_x, jacket_y, jacket_x + bannerSize, jacket_y + bannerSize);
+                    grad.addColorStop(0, '#a00'); // Dark Red
+                    grad.addColorStop(1, '#1a1a1a'); // Dark Grey/Black
+                    ctx.fillStyle = grad;
+                } else {
+                    ctx.fillStyle = diffStyle.bg;
+                }
+                ctx.fill();
+
+                // 帯の上の文字
+                ctx.font = `bold 18px ${FONT_FAMILY}`;
+                ctx.fillStyle = diffStyle.color;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // 文字を45度回転させて配置
+                ctx.translate(jacket_x + 40, jacket_y + 40);
+                ctx.rotate(-Math.PI / 4);
+                ctx.fillText(song.difficulty, 0, 0);
+                
+                ctx.restore(); // 回転やクリッピングなど、すべての設定を元に戻す
+
+                // ...この後にランキング番号の描画コードが続く...
 
                 // --- NEW: ジャケット右上に番号を追加 ---
                 const numberText = `#${i + 1}`;
