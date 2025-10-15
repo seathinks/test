@@ -278,8 +278,9 @@
         } else { // horizontal
             COLS = 6;
             BLOCK_WIDTH = 210;
+            const CENTER_GAP = 75; // ★ BESTとRECENTの間のスペース
             const gridWidth = (BLOCK_WIDTH * COLS) + (PADDING * (COLS - 1));
-            WIDTH = (PADDING * 3) + (gridWidth * 2); // PADDING | BEST | PADDING | RECENT | PADDING
+            WIDTH = PADDING + gridWidth + CENTER_GAP + gridWidth + PADDING;
         }
         const JACKET_SIZE = BLOCK_WIDTH * 0.85;
 
@@ -335,6 +336,23 @@
         ctx.fillText(`BEST Avg: ${bestAvg.toFixed(4)}`, WIDTH - PADDING, 150);
         ctx.fillText(`RECENT Avg: ${recentAvg.toFixed(4)}`, WIDTH - PADDING, 180);
         ctx.textAlign = 'left';
+        
+        // --- ★★★ (横モードのみ) 境界線を描画 ★★★ ---
+        if (mode === 'horizontal') {
+            const gridWidth = (BLOCK_WIDTH * COLS) + (PADDING * (COLS - 1));
+            const CENTER_GAP = 75;
+            const lineX = PADDING + gridWidth + (CENTER_GAP / 2);
+            
+            ctx.save();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([10, 10]); // 点線
+            ctx.beginPath();
+            ctx.moveTo(lineX, HEADER_HEIGHT + 15);
+            ctx.lineTo(lineX, canvas.height - PADDING - 30);
+            ctx.stroke();
+            ctx.restore();
+        }
 
         // --- 画像の事前読み込み ---
         const allSongs = [...bestList, ...recentList];
@@ -493,8 +511,9 @@
         } else { // horizontal
             const listsStartY = HEADER_HEIGHT;
             const bestStartX = PADDING;
+            const CENTER_GAP = 75; // ★ BESTとRECENTの間のスペース
             const gridWidth = (BLOCK_WIDTH * COLS) + (PADDING * (COLS - 1));
-            const recentStartX = PADDING + gridWidth + PADDING;
+            const recentStartX = PADDING + gridWidth + CENTER_GAP; // ★ RECENTの開始位置を調整
             renderSongList("BEST", songsWithImages.slice(0, bestList.length), bestStartX, listsStartY, COLS, BLOCK_WIDTH);
             renderSongList("RECENT", songsWithImages.slice(bestList.length), recentStartX, listsStartY, COLS, BLOCK_WIDTH);
         }
