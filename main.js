@@ -100,7 +100,7 @@
     const askForSettings = () => {
         return new Promise(resolve => {
             let selectedMode = null;
-            let selectedScanMode = 'paid'; // ★★★ デフォルトを 'paid' に設定 ★★★
+            let selectedScanMode = 'paid'; // デフォルトを 'paid' に設定
             let scrapeDelay = 1.0;
             let constThreshold = 14.5;
 
@@ -327,7 +327,7 @@
             overlay.appendChild(container);
             overlay.appendChild(globalCloseButton);
             
-            // ★★★ 初期状態を更新 ★★★
+            // 初期状態を更新
             updateScanModeButtons();
         });
     };
@@ -557,13 +557,11 @@
                 }
 
                 const scoreElement = scoreDoc.querySelector('.rank_playdata_highscore .text_b');
-                // ★★★ ジャケット画像取得処理を追加 ★★★
                 const jacketElement = scoreDoc.querySelector('.play_jacket_img img');
                 
                 if (scoreElement) {
                     const score_str = scoreElement.innerText;
                     const score_int = parseInt(score_str.replace(/,/g, ''), 10);
-                    // ★★★ 取得したURLを優先して使用 ★★★
                     const finalJacketUrl = jacketElement ? jacketElement.src : song.jacketUrl;
                     detailedSongs.push({ ...song, score_str, score_int, jacketUrl: finalJacketUrl });
                 } else {
@@ -1114,7 +1112,8 @@
 
                 if (isAborted) break;
 
-                updateMessage(`楽曲詳細を取得中... (${i + 1}/${allSongs.length})`, progress);
+                // ★★★ 表示メッセージを修正 ★★★
+                updateMessage(`楽曲詳細を取得中: ${song.title} (${i + 1}/${allSongs.length})`, progress);
                 const details = await scrapeMusicDetail(song.params);
 
                 const difficultyMapToJson = { 'MASTER': 'MAS', 'EXPERT': 'EXP', 'ULTIMA': 'ULT', 'ADVANCED': 'ADV', 'BASIC': 'BAS' };
