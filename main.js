@@ -1,6 +1,7 @@
 // main.js
 (async function() {
     'use strict';
+    const CURRENT_VERSION = "X-VERSE";
 
     const GITHUB_USER = "seathinks";
     const GITHUB_REPO = "test";
@@ -515,7 +516,7 @@
             body: new URLSearchParams({ genre: '99', token: token })
         });
         const rankingDoc = await fetchDocument(URL_RANKING_MASTER);
-        if (isAborted) return [];
+        if (isAborted) return null;
 
         const songForms = rankingDoc.querySelectorAll('form[action$="sendRankingDetail/"]');
         let initialSongList = [];
@@ -532,81 +533,85 @@
         });
 
         updateMessage("定数データと楽曲リストを照合中...", 10);
-        let filteredSongs = [];
+        let filteredNewSongs = [];
+        let filteredOldSongs = [];
         const diffMap = { 'MAS': '3', 'EXP': '2', 'ULT': '4' };
 
         for (const songData of constData) {
             if (songData.const >= constThreshold) {
                 const initialSong = initialSongList.find(s => s.title === songData.title);
                 if (initialSong && diffMap[songData.diff]) {
-                    filteredSongs.push({
+                    const songObject = {
                         title: songData.title,
                         artist: songData.artist,
                         difficulty: { 'MAS': 'MASTER', 'EXP': 'EXPERT', 'ULT': 'ULTIMA' }[songData.diff],
                         const: songData.const,
                         jacketUrl: `https://new.chunithm-net.com/chuni-mobile/images/jacket/${songData.img}.jpg`,
-                        playCount: 'N/A', // プレイ回数は取得不可
-                        params: {
-                            ...initialSong.params,
-                            diff: diffMap[songData.diff]
-                        }
-                    });
+                        playCount: 'N/A',
+                        params: { ...initialSong.params, diff: diffMap[songData.diff] }
+                    };
+                    // ★★★ バージョンで新旧を振り分け ★★★
+                    if (songData.version === CURRENT_VERSION) {
+                        filteredNewSongs.push(songObject);
+                    } else {
+                        filteredOldSongs.push(songObject);
+                    }
                 }
             }
         }
-        // 重複を削除
-        filteredSongs = filteredSongs.filter((song, index, self) =>
-            index === self.findIndex((s) => (
-                s.title === song.title && s.difficulty === song.difficulty
-            ))
-        );
+        
+        // 重複削除
+        filteredNewSongs = filteredNewSongs.filter((song, index, self) => index === self.findIndex(s => s.title === song.title && s.difficulty === song.difficulty));
+        filteredOldSongs = filteredOldSongs.filter((song, index, self) => index === self.findIndex(s => s.title === song.title && s.difficulty === song.difficulty));
 
-        let detailedSongs = [];
-        const total = filteredSongs.length;
-        for (let i = 0; i < total; i++) {
-            if (isAborted) break;
-            const song = filteredSongs[i];
-            const progress = 15 + (i / total) * 85;
-
-            if (i > 0 && delay > 0) {
-                updateMessage(`サーバー負荷軽減のため待機中... (${delay.toFixed(1)}秒) - (${i}/${total})`, progress);
-                await sleep(delay * 1000);
-            }
-            if (isAborted) break;
-
-            try {
-                updateMessage(`スコア取得中: ${song.title} [${song.difficulty}] (${i + 1}/${total})`, progress);
-
-                await fetch(URL_RANKING_DETAIL_SEND, { method: 'POST', body: new URLSearchParams(song.params) });
-
-                let scoreDoc;
-                if (song.difficulty === 'ULTIMA') {
-                    await fetch(URL_RANKING_ULTIMA_SEND, { method: 'POST', body: new URLSearchParams({ ...song.params, category: '1', region: '1' }) });
-                    scoreDoc = await fetchDocument(URL_RANKING_DETAIL);
-                } else if (song.difficulty === 'EXPERT') {
-                    await fetch(URL_RANKING_EXPERT_SEND, { method: 'POST', body: new URLSearchParams({ ...song.params, category: '1', region: '1' }) });
-                    scoreDoc = await fetchDocument(URL_RANKING_DETAIL);
-                } else { // ここがMASTER。まさかADVANCED、BASICがレートに入ることなんかないよね？ (これ作った時の僕はあるかも)
-                    scoreDoc = await fetchDocument(URL_RANKING_DETAIL);
+        const processSongList = async (list, type, startProgress, progressShare) => {
+            let detailedSongs = [];
+            const total = list.length;
+            for (let i = 0; i < total; i++) {
+                if (isAborted) break;
+                const song = list[i];
+                const progress = startProgress + (i / total) * progressShare;
+                if (i > 0 && delay > 0) {
+                    updateMessage(`サーバー負荷軽減のため待機中... (${delay.toFixed(1)}秒)`, progress);
+                    await sleep(delay * 1000);
                 }
-
-                const scoreElement = scoreDoc.querySelector('.rank_playdata_highscore .text_b');
-                const jacketElement = scoreDoc.querySelector('.play_jacket_img img');
-                
-                if (scoreElement) {
-                    const score_str = scoreElement.innerText;
-                    const score_int = parseInt(score_str.replace(/,/g, ''), 10);
-                    const finalJacketUrl = jacketElement ? jacketElement.src : song.jacketUrl;
-                    detailedSongs.push({ ...song, score_str, score_int, jacketUrl: finalJacketUrl });
-                } else {
-                    detailedSongs.push({ ...song, score_str: '0', score_int: 0 }); // スコアがなければ0点
+                if (isAborted) break;
+                try {
+                    updateMessage(`${type}取得中: ${song.title} [${song.difficulty}] (${i + 1}/${total})`, progress);
+                    await fetch(URL_RANKING_DETAIL_SEND, { method: 'POST', body: new URLSearchParams(song.params) });
+                    let scoreDoc;
+                    if (song.difficulty === 'ULTIMA') {
+                        await fetch(URL_RANKING_ULTIMA_SEND, { method: 'POST', body: new URLSearchParams({ ...song.params, category: '1', region: '1' }) });
+                        scoreDoc = await fetchDocument(URL_RANKING_DETAIL);
+                    } else if (song.difficulty === 'EXPERT') {
+                        await fetch(URL_RANKING_EXPERT_SEND, { method: 'POST', body: new URLSearchParams({ ...song.params, category: '1', region: '1' }) });
+                        scoreDoc = await fetchDocument(URL_RANKING_DETAIL);
+                    } else {
+                        scoreDoc = await fetchDocument(URL_RANKING_DETAIL);
+                    }
+                    const scoreElement = scoreDoc.querySelector('.rank_playdata_highscore .text_b');
+                    const jacketElement = scoreDoc.querySelector('.play_jacket_img img');
+                    if (scoreElement) {
+                        const score_str = scoreElement.innerText;
+                        const score_int = parseInt(score_str.replace(/,/g, ''), 10);
+                        const finalJacketUrl = jacketElement ? jacketElement.src : song.jacketUrl;
+                        detailedSongs.push({ ...song, score_str, score_int, jacketUrl: finalJacketUrl });
+                    } else {
+                        detailedSongs.push({ ...song, score_str: '0', score_int: 0 });
+                    }
+                } catch (e) {
+                    console.warn(`スコア取得失敗: ${song.title}`, e);
                 }
-
-            } catch (e) {
-                console.warn(`スコア取得失敗: ${song.title}`, e);
             }
-        }
-        return detailedSongs;
+            return detailedSongs;
+        };
+
+        const detailedNewSongs = await processSongList(filteredNewSongs, "新曲", 15, 40);
+        if (isAborted) return null;
+        const detailedOldSongs = await processSongList(filteredOldSongs, "旧曲", 55, 40);
+        if (isAborted) return null;
+        
+        return { detailedNewSongs, detailedOldSongs };
     };
 
 
