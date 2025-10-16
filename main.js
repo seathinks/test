@@ -100,7 +100,7 @@
     const askForSettings = () => {
         return new Promise(resolve => {
             let selectedMode = null;
-            let selectedScanMode = null;
+            let selectedScanMode = 'paid'; // ★★★ デフォルトを 'paid' に設定 ★★★
             let scrapeDelay = 1.0;
             let constThreshold = 14.5;
 
@@ -134,7 +134,7 @@
             scanModeButtonsContainer.style.cssText = 'display: flex; justify-content: center; gap: 20px;';
             const constThresholdSection = document.createElement('div');
             constThresholdSection.style.cssText = 'margin-top: 25px; display: none;';
-            
+
             const createScanModeButton = (text, scanMode) => {
                 const button = document.createElement('button');
                 button.innerHTML = text;
@@ -146,21 +146,26 @@
                 `;
                 button.onclick = () => {
                     selectedScanMode = scanMode;
-                    document.querySelectorAll('button[data-scan-mode]').forEach(btn => {
-                        const isSelected = btn.dataset.scanMode === selectedScanMode;
-                        btn.style.backgroundColor = isSelected ? '#4A90E2' : '#333';
-                        btn.style.borderColor = isSelected ? '#6FBFFF' : '#555';
-                    });
-                    constThresholdSection.style.display = scanMode === 'free' ? 'block' : 'none';
+                    updateScanModeButtons();
                     checkIfReady();
                 };
                 return button;
             };
+
+            const updateScanModeButtons = () => {
+                 document.querySelectorAll('button[data-scan-mode]').forEach(btn => {
+                    const isSelected = btn.dataset.scanMode === selectedScanMode;
+                    btn.style.backgroundColor = isSelected ? '#4A90E2' : '#333';
+                    btn.style.borderColor = isSelected ? '#6FBFFF' : '#555';
+                });
+                constThresholdSection.style.display = selectedScanMode === 'free' ? 'block' : 'none';
+            };
+
             scanModeButtonsContainer.appendChild(createScanModeButton('通常モード<br><small>(Rating準拠 / 要課金)</small>', 'paid'));
             scanModeButtonsContainer.appendChild(createScanModeButton('FREEモード<br><small>(全曲スキャン / 無料可)</small>', 'free'));
             scanModeSection.appendChild(scanModeButtonsContainer);
             container.appendChild(scanModeSection);
-            
+
             // --- Const Threshold Section (for FREE mode) ---
             const constLabel = document.createElement('label');
             constLabel.textContent = 'レート対象にする譜面定数の下限値';
@@ -194,7 +199,6 @@
 
             // --- Delay Section ---
             const delaySection = document.createElement('div');
-            // ... (内容は変更なし) ...
             delaySection.style.cssText = 'margin-bottom: 30px; margin-top: 20px;';
             const delayLabel = document.createElement('label');
             delayLabel.textContent = '取得間隔 (秒)';
@@ -248,7 +252,6 @@
 
             // --- Image Mode Selection ---
             const modeSection = document.createElement('div');
-            // ... (内容は変更なし) ...
             modeSection.style.cssText = 'margin-bottom: 40px;';
             const modeLabel = document.createElement('label');
             modeLabel.textContent = '画像レイアウト';
@@ -303,7 +306,7 @@
                     generateButton.style.animation = 'pulseGlow 2s infinite';
                 }
             };
-            
+
             generateButton.textContent = '生成開始';
             generateButton.disabled = true;
             generateButton.style.cssText = `
@@ -323,13 +326,16 @@
             overlay.innerHTML = '';
             overlay.appendChild(container);
             overlay.appendChild(globalCloseButton);
+            
+            // ★★★ 初期状態を更新 ★★★
+            updateScanModeButtons();
         });
     };
 
     const message = document.createElement('div');
     const updateMessage = (text, progress) => {
         console.log(text);
-        
+
         const textElement = message.querySelector('.progress-text');
         if (textElement) {
             textElement.style.opacity = '0';
@@ -338,7 +344,7 @@
                 textElement.style.opacity = '1';
             }, 200);
         }
-        
+
         if (progress !== undefined) {
             const barElement = message.querySelector('.progress-bar-inner');
             if (barElement) {
@@ -416,25 +422,25 @@
         if (score >= 1007500) return constant + 2.0 + (score - 1007500) * 0.0001;
         if (score >= 1005000) return constant + 1.5 + (score - 1005000) * 0.0002;
         if (score >= 1000000) return constant + 1.0 + (score - 1000000) * 0.0001;
-        if (score >= 975000)  return constant + (score - 975000) / 25000;
-        if (score >= 950000)  return constant - 1.5 + (score - 950000) / 25000 * 1.5;
-        if (score >= 925000)  return constant - 3.0 + (score - 925000) / 25000 * 1.5;
-        if (score >= 900000)  return constant - 5.0 + (score - 900000) / 25000 * 2.0;
+        if (score >= 975000) return constant + (score - 975000) / 25000;
+        if (score >= 950000) return constant - 1.5 + (score - 950000) / 25000 * 1.5;
+        if (score >= 925000) return constant - 3.0 + (score - 925000) / 25000 * 1.5;
+        if (score >= 900000) return constant - 5.0 + (score - 900000) / 25000 * 2.0;
         return 0.0;
     };
     const getRankInfo = (score) => {
         if (score >= 1009000) return { rank: "SSS+", color: "#FFD700" };
-        if (score >= 1007500) return { rank: "SSS",  color: "#ffdf75" };
-        if (score >= 1005000) return { rank: "SS+",  color: "#e88aff" };
-        if (score >= 1000000) return { rank: "SS",   color: "#e88aff" };
-        if (score >= 975000)  return { rank: "S",    color: "#e88aff" };
-        if (score >= 950000)  return { rank: "AAA",  color: "#f44336" };
-        if (score >= 925000)  return { rank: "AA",   color: "#f44336" };
-        if (score >= 900000)  return { rank: "A",    color: "#f44336" };
-        if (score >= 800000)  return { rank: "BBB",  color: "#2196F3" };
-        if (score >= 700000)  return { rank: "BB",   color: "#2196F3" };
-        if (score >= 600000)  return { rank: "B",    color: "#2196F3" };
-        if (score >= 500000)  return { rank: "C",    color: "#795548" };
+        if (score >= 1007500) return { rank: "SSS", color: "#ffdf75" };
+        if (score >= 1005000) return { rank: "SS+", color: "#e88aff" };
+        if (score >= 1000000) return { rank: "SS", color: "#e88aff" };
+        if (score >= 975000) return { rank: "S", color: "#e88aff" };
+        if (score >= 950000) return { rank: "AAA", color: "#f44336" };
+        if (score >= 925000) return { rank: "AA", color: "#f44336" };
+        if (score >= 900000) return { rank: "A", color: "#f44336" };
+        if (score >= 800000) return { rank: "BBB", color: "#2196F3" };
+        if (score >= 700000) return { rank: "BB", color: "#2196F3" };
+        if (score >= 600000) return { rank: "B", color: "#2196F3" };
+        if (score >= 500000) return { rank: "C", color: "#795548" };
         return { rank: "D", color: "#9E9E9E" };
     };
     const drawRoundRect = (ctx, x, y, width, height, radius) => {
@@ -502,9 +508,9 @@
                     filteredSongs.push({
                         title: songData.title,
                         artist: songData.artist,
-                        difficulty: { 'MAS': 'MASTER', 'EXP': 'EXPERT', 'ULT': 'ULTIMA'}[songData.diff],
+                        difficulty: { 'MAS': 'MASTER', 'EXP': 'EXPERT', 'ULT': 'ULTIMA' }[songData.diff],
                         const: songData.const,
-                        jacketUrl: `https://new.chunithm-net.com/chuni-mobile/images/jacket/${songData.img}.jpg`,
+                        jacketUrl: `https://new.chunithm-net.com/chuni-mobile/images/jacket/${songData.img}.jpg`, // フォールバック用
                         playCount: 'N/A', // プレイ回数は取得不可
                         params: {
                             ...initialSong.params,
@@ -536,27 +542,32 @@
 
             try {
                 updateMessage(`スコア取得中: ${song.title} [${song.difficulty}] (${i + 1}/${total})`, progress);
-                
+
                 await fetch(URL_RANKING_DETAIL_SEND, { method: 'POST', body: new URLSearchParams(song.params) });
-                
+
                 let scoreDoc;
                 if (song.difficulty === 'ULTIMA') {
                     await fetch(URL_RANKING_ULTIMA_SEND, { method: 'POST', body: new URLSearchParams({ ...song.params, category: '1', region: '1' }) });
                     scoreDoc = await fetchDocument(URL_RANKING_DETAIL);
                 } else if (song.difficulty === 'EXPERT') {
-                     await fetch(URL_RANKING_EXPERT_SEND, { method: 'POST', body: new URLSearchParams({ ...song.params, category: '1', region: '1' }) });
+                    await fetch(URL_RANKING_EXPERT_SEND, { method: 'POST', body: new URLSearchParams({ ...song.params, category: '1', region: '1' }) });
                     scoreDoc = await fetchDocument(URL_RANKING_DETAIL);
                 } else { // MASTER
                     scoreDoc = await fetchDocument(URL_RANKING_DETAIL);
                 }
 
                 const scoreElement = scoreDoc.querySelector('.rank_playdata_highscore .text_b');
+                // ★★★ ジャケット画像取得処理を追加 ★★★
+                const jacketElement = scoreDoc.querySelector('.play_jacket_img img');
+                
                 if (scoreElement) {
                     const score_str = scoreElement.innerText;
                     const score_int = parseInt(score_str.replace(/,/g, ''), 10);
-                    detailedSongs.push({ ...song, score_str, score_int });
+                    // ★★★ 取得したURLを優先して使用 ★★★
+                    const finalJacketUrl = jacketElement ? jacketElement.src : song.jacketUrl;
+                    detailedSongs.push({ ...song, score_str, score_int, jacketUrl: finalJacketUrl });
                 } else {
-                     detailedSongs.push({ ...song, score_str: '0', score_int: 0 }); // スコアがなければ0点
+                    detailedSongs.push({ ...song, score_str: '0', score_int: 0 }); // スコアがなければ0点
                 }
 
             } catch (e) {
@@ -570,7 +581,7 @@
     const generateImage = async (playerData, bestList, recentList, mode) => {
         await document.fonts.load('bold 20px "Noto Sans JP"');
         await document.fonts.load('20px "Noto Sans JP"');
-        
+
         updateMessage("背景画像を読み込み中...");
         const BG_BASE_URL = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/`;
         const bgUrl = mode === 'vertical' ? `${BG_BASE_URL}bg_portrait.png` : `${BG_BASE_URL}bg_landscape.png`;
@@ -656,7 +667,7 @@
             const rows = Math.ceil(list.length / cols);
             return 70 + (rows * (BLOCK_HEIGHT + PADDING));
         };
-        
+
         canvas.width = WIDTH;
         if (mode === 'vertical') {
             canvas.height = HEADER_HEIGHT + calcListHeight(bestList, COLS) + CENTER_GAP + calcListHeight(recentList, COLS) + PADDING;
@@ -680,8 +691,8 @@
         const headerY = PADDING / 2;
         const headerW = WIDTH - PADDING;
         const headerH = HEADER_HEIGHT - PADDING;
-        
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'; 
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
         ctx.lineWidth = 1;
         drawRoundRect(ctx, headerX, headerY, headerW, headerH, 15);
@@ -726,9 +737,9 @@
         ctx.fillStyle = '#D1C4E9';
         ctx.fillText(`BEST Avg: ${bestAvg.toFixed(4)}`, rightX, headerY + 185);
         ctx.fillText(`RECENT Avg: ${recentAvg.toFixed(4)}`, rightX, headerY + 220);
-        
+
         ctx.textAlign = 'left';
-        
+
         // --- 区切り線を描画 ---
         ctx.save();
         ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
@@ -810,7 +821,7 @@
                     drawRoundRect(ctx, jacket_x, jacket_y, JACKET_SIZE, JACKET_SIZE, 10);
                     ctx.fill();
                 }
-                
+
                 // ジャケット右上の番号と難易度帯
                 const numberText = `#${i + 1}`;
                 ctx.font = `bold 30px ${FONT_FAMILY}`;
@@ -836,7 +847,7 @@
                 drawRoundRect(ctx, ribbonX, ribbonY, ribbonWidth, ribbonHeight, 8);
                 ctx.fill();
                 ctx.restore();
-                
+
                 ctx.textAlign = 'right';
                 ctx.lineJoin = 'round';
                 const numberX = ribbonX + ribbonWidth - 10;
@@ -915,7 +926,7 @@
             renderSongList("BEST", songsWithImages.slice(0, bestList.length), bestStartX, listsStartY, COLS, BLOCK_WIDTH);
             renderSongList("RECENT", songsWithImages.slice(bestList.length), recentStartX, listsStartY, COLS, BLOCK_WIDTH);
         }
-        
+
         // --- フッター描画 (新デザイン) ---
         ctx.font = `18px ${FONT_FAMILY}`;
         ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
@@ -947,7 +958,7 @@
             const title = document.createElement('h2');
             title.textContent = '生成完了！';
             title.style.cssText = 'font-size: 24px; font-weight: bold; color: #E0E0E0; margin: 0;';
-            
+
             const resultImage = document.createElement('img');
             resultImage.src = dataUrl;
             resultImage.style.cssText = `
@@ -959,7 +970,7 @@
                 cursor: zoom-in;
                 transition: all 0.2s ease-in-out;
             `;
-            
+
             let isScaled = true;
             resultImage.onclick = () => {
                 if (isScaled) {
@@ -976,7 +987,7 @@
 
             const buttonContainer = document.createElement('div');
             buttonContainer.style.cssText = 'display: flex; gap: 15px;';
-            
+
             const createActionButton = (text, bgColor) => {
                 const button = document.createElement('button');
                 button.textContent = text;
@@ -1018,15 +1029,15 @@
             currentOverlay.appendChild(globalCloseButton); // Re-append global close button
         }
     };
-    
+
     // --- メイン処理 ---
     try {
         const { mode, delay, scanMode, constThreshold } = await askForSettings();
-        
+
         if (isAborted) return;
-        
+
         overlay.innerHTML = '';
-        
+
         message.style.cssText = `
             width: 500px; text-align: center;
             animation: fadeIn 0.5s;
@@ -1062,7 +1073,7 @@
         updateMessage("譜面定数データをダウンロード中...", 10);
         const constData = await fetch(CONST_DATA_URL).then(res => res.json());
         if (isAborted) return;
-        
+
         let detailedSongs = [];
 
         if (scanMode === 'free') {
@@ -1071,20 +1082,20 @@
             const songs = await fetchAllSongsForFreeUser(constThreshold, delay, constData);
 
             if (isAborted) return;
-            
+
             updateMessage("全楽曲のレーティングを計算中...", 98);
             songs.forEach(song => {
                 const rating = calculateRating(song.score_int, song.const);
                 detailedSongs.push({ ...song, rating });
             });
-            
+
             detailedSongs.sort((a, b) => b.rating - a.rating);
 
         } else { // paid mode
             updateMessage("BEST枠の曲リストを取得中...", 15);
             const bestList = await scrapeRatingList(URL_RATING_BEST);
             if (isAborted) return;
-            
+
             updateMessage("RECENT枠の曲リストを取得中...", 20);
             const recentList = await scrapeRatingList(URL_RATING_RECENT);
             if (isAborted) return;
@@ -1095,12 +1106,12 @@
                 if (isAborted) break;
                 const song = allSongs[i];
                 const progress = 20 + (i / allSongs.length) * 80;
-                
+
                 if (i > 0 && delay > 0) {
                     updateMessage(`サーバー負荷軽減のため待機中... (${delay.toFixed(1)}秒) - (${i}/${allSongs.length})`, progress);
                     await sleep(delay * 1000);
                 }
-                
+
                 if (isAborted) break;
 
                 updateMessage(`楽曲詳細を取得中... (${i + 1}/${allSongs.length})`, progress);
@@ -1110,11 +1121,11 @@
                 const diffAbbreviation = difficultyMapToJson[song.difficulty];
                 const matchedConst = constData.find(m => m.title === song.title && m.diff === diffAbbreviation)?.const;
                 const rating = calculateRating(song.score_int, matchedConst);
-                
+
                 detailedSongs.push({ ...song, ...details, 'const': matchedConst || 0.0, rating });
             }
         }
-        
+
         if (isAborted) return;
 
         const finalBestList = detailedSongs.slice(0, 30);
