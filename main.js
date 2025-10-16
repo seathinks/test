@@ -1111,7 +1111,9 @@
         const constData = await fetch(CONST_DATA_URL).then(res => res.json());
         if (isAborted) return;
 
-        let detailedSongs = [];
+        let finalBestList = [];
+        let finalRecentList = [];
+        //let detailedSongs = [];
 
         if (scanMode === 'free') {
             updateMessage(`無料モード: ランキングから定数${constThreshold}以上の曲を検索します...`, 12);
@@ -1131,6 +1133,7 @@
             finalRecentList = detailedNewSongs.slice(0, 20);
 
         } else { // 有料ユーザー向け、というかみんなこっちを使った方が絶対いい
+            
             updateMessage("BEST枠の曲リストを取得中...", 15);
             const bestList = await scrapeRatingList(URL_RATING_BEST);
             if (isAborted) return;
@@ -1163,12 +1166,10 @@
 
                 detailedSongs.push({ ...song, ...details, 'const': matchedConst || 0.0, rating });
             }
+            if (isAborted) return;
+            finalBestList = detailedSongs.slice(0, bestList.length);
+            finalRecentList = detailedSongs.slice(bestList.length);
         }
-
-        if (isAborted) return;
-
-        const finalBestList = detailedSongs.slice(0, 30);
-        const finalRecentList = detailedSongs.slice(30, 50);
 
         await generateImage(playerData, finalBestList, finalRecentList, mode);
 
