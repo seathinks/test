@@ -606,9 +606,9 @@
             return detailedSongs;
         };
 
-        const detailedNewSongs = await processSongList(filteredNewSongs, "新曲", 15, 40);
+        const detailedNewSongs = await processSongList(filteredNewSongs, "新曲枠", 15, 40);
         if (isAborted) return null;
-        const detailedOldSongs = await processSongList(filteredOldSongs, "旧曲", 55, 40);
+        const detailedOldSongs = await processSongList(filteredOldSongs, "BEST枠", 55, 40);
         if (isAborted) return null;
         
         return { detailedNewSongs, detailedOldSongs };
@@ -773,7 +773,7 @@
         ctx.font = `bold 24px ${FONT_FAMILY}`;
         ctx.fillStyle = '#D1C4E9';
         ctx.fillText(`BEST Avg: ${bestAvg.toFixed(4)}`, rightX, headerY + 185);
-        ctx.fillText(`RECENT Avg: ${recentAvg.toFixed(4)}`, rightX, headerY + 220);
+        ctx.fillText(`NEW Avg: ${recentAvg.toFixed(4)}`, rightX, headerY + 220);
 
         ctx.textAlign = 'left';
 
@@ -954,14 +954,14 @@
             const bestStartY = HEADER_HEIGHT;
             const recentStartY = bestStartY + calcListHeight(bestList, COLS) + CENTER_GAP;
             renderSongList("BEST", songsWithImages.slice(0, bestList.length), PADDING, bestStartY, COLS, BLOCK_WIDTH);
-            renderSongList("RECENT", songsWithImages.slice(bestList.length), PADDING, recentStartY, COLS, BLOCK_WIDTH);
+            renderSongList("NEW", songsWithImages.slice(bestList.length), PADDING, recentStartY, COLS, BLOCK_WIDTH);
         } else { // horizontal
             const listsStartY = HEADER_HEIGHT;
             const bestStartX = PADDING;
             const gridWidth = (BLOCK_WIDTH * COLS) + (PADDING * (COLS - 1));
             const recentStartX = PADDING + gridWidth + CENTER_GAP;
             renderSongList("BEST", songsWithImages.slice(0, bestList.length), bestStartX, listsStartY, COLS, BLOCK_WIDTH);
-            renderSongList("RECENT", songsWithImages.slice(bestList.length), recentStartX, listsStartY, COLS, BLOCK_WIDTH);
+            renderSongList("NEW", songsWithImages.slice(bestList.length), recentStartX, listsStartY, COLS, BLOCK_WIDTH);
         }
 
         // --- フッター描画 ---
@@ -1115,25 +1115,27 @@
 
         if (scanMode === 'free') {
             updateMessage(`無料モード: ランキングから定数${constThreshold}以上の曲を検索します...`, 12);
-            await sleep(1500); // メッセージ表示のための待機
-            const songs = await fetchAllSongsForFreeUser(constThreshold, delay, constData);
+            const result = await fetchAllSongsForFreeUser(constThreshold, delay, constData);
+            if (isAborted || !result) return;
+            
+            const { detailedNewSongs, detailedOldSongs } = result;
 
-            if (isAborted) return;
+            updateMessage("レーティングを計算中...", 98);
+            detailedNewSongs.forEach(song => song.rating = calculateRating(song.score_int, song.const));
+            detailedOldSongs.forEach(song => song.rating = calculateRating(song.score_int, song.const));
+            
+            detailedNewSongs.sort((a, b) => b.rating - a.rating);
+            detailedOldSongs.sort((a, b) => b.rating - a.rating);
 
-            updateMessage("全楽曲のレーティングを計算中...", 98);
-            songs.forEach(song => {
-                const rating = calculateRating(song.score_int, song.const);
-                detailedSongs.push({ ...song, rating });
-            });
-
-            detailedSongs.sort((a, b) => b.rating - a.rating);
+            finalBestList = detailedOldSongs.slice(0, 30);
+            finalRecentList = detailedNewSongs.slice(0, 20);
 
         } else { // 有料ユーザー向け、というかみんなこっちを使った方が絶対いい
             updateMessage("BEST枠の曲リストを取得中...", 15);
             const bestList = await scrapeRatingList(URL_RATING_BEST);
             if (isAborted) return;
 
-            updateMessage("RECENT枠の曲リストを取得中...", 20);
+            updateMessage("新曲枠の曲リストを取得中...", 20);
             const recentList = await scrapeRatingList(URL_RATING_RECENT);
             if (isAborted) return;
 
