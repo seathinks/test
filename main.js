@@ -2,12 +2,10 @@
 (async function() {
     'use strict';
 
-    // --- 設定項目 ---
-    const GITHUB_USER = "seathinks"; // あなたのGitHubユーザー名
-    const GITHUB_REPO = "test"; // あなたのリポジトリ名
+    const GITHUB_USER = "seathinks";
+    const GITHUB_REPO = "test";
     const CONST_DATA_URL = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/chunirec.json`;
 
-    // --- 定数 ---
     const BASE_URL = "https://new.chunithm-net.com/chuni-mobile/html/mobile/";
     const URL_PLAYER_DATA = BASE_URL + "home/playerData/";
     const URL_RATING_BEST = URL_PLAYER_DATA + "ratingDetailBest/";
@@ -22,15 +20,13 @@
     const URL_RANKING_EXPERT_SEND = URL_RANKING_DETAIL + "sendRankingExpert/";
 
 
-    // ★★★ 中断フラグを定義 ★★★
     let isAborted = false;
 
-    // --- UIの準備 ---
     const overlay = document.createElement('div');
     const message = document.createElement('div');
     const globalCloseButton = document.createElement('button');
 
-    // エラーメッセージを表示する共通関数
+    // エラーメッセージ
     const showError = (errorMessage) => {
         console.error(errorMessage);
         overlay.innerHTML = '';
@@ -50,7 +46,6 @@
         }
     };
 
-    // ★★★ 変更点1: 実行場所の検証 ★★★
     if (window.location.hostname !== 'new.chunithm-net.com') {
         document.body.appendChild(overlay);
         overlay.style.cssText = `
@@ -59,7 +54,7 @@
             justify-content: center; align-items: center; color: white;
             font-family: sans-serif; padding: 20px; box-sizing: border-box;
         `;
-        showError("このブックマークレットはCHUNITHM-NET内でのみ実行できます。");
+        showError("このブックマークレットはCHUNITHM-NET内でのみ実行できます");
         globalCloseButton.onclick = () => document.body.removeChild(overlay);
         return;
     }
@@ -94,7 +89,6 @@
     `;
     document.body.appendChild(overlay);
 
-    // 常に表示される閉じるボタンを追加
     globalCloseButton.innerHTML = '&times;';
     globalCloseButton.style.cssText = `
         position: fixed;
@@ -120,8 +114,8 @@
     globalCloseButton.onmouseup = () => { globalCloseButton.style.transform = 'scale(1)'; };
 
     globalCloseButton.onclick = () => {
-        isAborted = true; // 中断フラグを立てる
-        console.log("処理がユーザーによって中断されました。");
+        isAborted = true;
+        console.log("処理がユーザーによって中断されました");
         if (document.body.contains(overlay)) {
             document.body.removeChild(overlay);
         }
@@ -129,13 +123,13 @@
     overlay.appendChild(globalCloseButton);
 
     /**
-     * ユーザーに設定を選択させる新しいUIを表示する
+     * 
      * @returns {Promise<{mode: string, delay: number, scanMode: string, constThreshold: number}>} - 選択された設定を解決するPromise
      */
     const askForSettings = () => {
         return new Promise(resolve => {
             let selectedMode = null;
-            let selectedScanMode = 'paid'; // デフォルトを 'paid' に設定
+            let selectedScanMode = 'paid'; // デフォルトは有料ユーザーね
             let scrapeDelay = 1.0;
             let constThreshold = 14.5;
 
@@ -154,11 +148,11 @@
             container.appendChild(title);
 
             const subtitle = document.createElement('p');
-            subtitle.textContent = '動作モード、画像レイアウト、取得間隔を設定してください。';
+            subtitle.textContent = '動作モード、画像レイアウト、取得間隔を設定してください <br> 取得間隔によってはCHUNITHM-NETのサーバーに負荷をかける可能性があります';
             subtitle.style.cssText = 'font-size: 16px; margin-bottom: 30px; color: #B0B0B0;';
             container.appendChild(subtitle);
 
-            // --- Scan Mode Selection ---
+            // 選択画面のUIとか
             const scanModeSection = document.createElement('div');
             scanModeSection.style.cssText = 'margin-bottom: 30px;';
             const scanModeLabel = document.createElement('label');
@@ -196,14 +190,14 @@
                 constThresholdSection.style.display = selectedScanMode === 'free' ? 'block' : 'none';
             };
 
-            scanModeButtonsContainer.appendChild(createScanModeButton('通常モード<br><small>(Rating準拠 / 要課金)</small>', 'paid'));
-            scanModeButtonsContainer.appendChild(createScanModeButton('FREEモード<br><small>(全曲スキャン / 無料可)</small>', 'free'));
+            scanModeButtonsContainer.appendChild(createScanModeButton('通常モード<br><small>(Rating準拠 / 課金ユーザー)</small>', 'paid'));
+            scanModeButtonsContainer.appendChild(createScanModeButton('無料モード<br><small>(全曲スキャン / 無料ユーザー)</small>', 'free'));
             scanModeSection.appendChild(scanModeButtonsContainer);
             container.appendChild(scanModeSection);
 
-            // --- Const Threshold Section (for FREE mode) ---
+            // 無料ユーザーはconstantの最小値を設定しないと恐ろしいことになるよ
             const constLabel = document.createElement('label');
-            constLabel.textContent = 'レート対象にする譜面定数の下限値';
+            constLabel.textContent = 'レーティング対象にする譜面定数の最小値';
             constLabel.style.cssText = 'display: block; font-size: 16px; color: #D0D0D0; margin-bottom: 10px;';
             constThresholdSection.appendChild(constLabel);
             const constInput = document.createElement('input');
@@ -226,13 +220,13 @@
             };
             constThresholdSection.appendChild(constInput);
             const freeModeWarning = document.createElement('p');
-            freeModeWarning.innerHTML = '⚠️ <strong>注意:</strong> FREEモードは公式サイトのランキングから全曲のスコアを取得するため、完了までに<strong>数分以上</strong>かかる場合があります。';
+            freeModeWarning.innerHTML = '⚠️ <strong>注意:</strong> 無料ユーザーモードは公式サイトの楽曲ランキングから全曲のスコアを取得するため、完了までに<strong>数分以上</strong>かかる場合があります<br>また大量にアクセスするため、取得間隔によってはCHUNITHM-NETのサーバーに負荷をかける可能性があります';// CHUNITHM-NETのサーバーがどれだけの強度を誇るのかはわからない
             freeModeWarning.style.cssText = 'font-size: 14px; margin-top: 15px; color: #FFC107; background-color: rgba(255, 193, 7, 0.1); padding: 10px; border-radius: 5px; border: 1px solid rgba(255, 193, 7, 0.3);';
             constThresholdSection.appendChild(freeModeWarning);
             container.appendChild(constThresholdSection);
 
 
-            // --- Delay Section ---
+            // Chunithm-netへの負荷軽減だったり、レートリミット対策だったり
             const delaySection = document.createElement('div');
             delaySection.style.cssText = 'margin-bottom: 30px; margin-top: 20px;';
             const delayLabel = document.createElement('label');
@@ -285,7 +279,7 @@
             container.appendChild(delaySection);
 
 
-            // --- Image Mode Selection ---
+            // 個人的には横派
             const modeSection = document.createElement('div');
             modeSection.style.cssText = 'margin-bottom: 40px;';
             const modeLabel = document.createElement('label');
@@ -326,13 +320,13 @@
                 };
                 return button;
             };
-            modeButtonsContainer.appendChild(createModeButton('縦モード', 'vertical'));
-            modeButtonsContainer.appendChild(createModeButton('横モード', 'horizontal'));
+            modeButtonsContainer.appendChild(createModeButton('縦', 'vertical'));
+            modeButtonsContainer.appendChild(createModeButton('横', 'horizontal'));
             modeSection.appendChild(modeButtonsContainer);
             container.appendChild(modeSection);
 
 
-            // --- Generate Button ---
+            // 無駄に目立たせてみた開始ボタン
             const checkIfReady = () => {
                 if (selectedMode && selectedScanMode) {
                     generateButton.disabled = false;
@@ -388,13 +382,15 @@
     };
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-    // ★★★ 変更点2: セッション切れ検知機能を追加 ★★★
+    // セッション切れ、あまりにも長時間操作がなかったり、他の場所からログインしたりすると切れるやつ、そんなのでエラー報告来たら泣くから
     const fetchDocument = async (url, options = {}) => {
         const response = await fetch(url, options);
+        // 503はメンテナンス中だからね
+        if (response.status === 503) throw new Error("現在CHUNITHM-NETはメンテナンス中です！");
         if (!response.ok) throw new Error(`HTTPエラーが発生しました: ${response.status} (${url})`);
         
         const htmlText = await response.text();
-        if (htmlText.includes("再度ログインしてください。")) {
+        if (htmlText.includes("再度ログインしてください")) {
             throw new Error("セッションが切れました。CHUNITHM-NETに再度ログインしてください。");
         }
         
@@ -473,9 +469,9 @@
     const getRankInfo = (score) => {
         if (score >= 1009000) return { rank: "SSS+", color: "#FFD700" };
         if (score >= 1007500) return { rank: "SSS", color: "#ffdf75" };
-        if (score >= 1005000) return { rank: "SS+", color: "#e88aff" };
-        if (score >= 1000000) return { rank: "SS", color: "#e88aff" };
-        if (score >= 975000) return { rank: "S", color: "#e88aff" };
+        if (score >= 1005000) return { rank: "SS+", color: "#ffda8aff" };
+        if (score >= 1000000) return { rank: "SS", color: "#fcc652ff" };
+        if (score >= 975000) return { rank: "S", color: "#ffaf47ff" };
         if (score >= 950000) return { rank: "AAA", color: "#f44336" };
         if (score >= 925000) return { rank: "AA", color: "#f44336" };
         if (score >= 900000) return { rank: "A", color: "#f44336" };
@@ -509,7 +505,7 @@
     };
 
     /**
-     * FREEモード用の楽曲データ取得
+     * 無料ユーザー向けの楽曲データ取得
      */
     const fetchAllSongsForFreeUser = async (constThreshold, delay, constData) => {
         updateMessage("ランキングページにアクセス中...", 5);
@@ -548,7 +544,7 @@
                         artist: songData.artist,
                         difficulty: { 'MAS': 'MASTER', 'EXP': 'EXPERT', 'ULT': 'ULTIMA' }[songData.diff],
                         const: songData.const,
-                        jacketUrl: `https://new.chunithm-net.com/chuni-mobile/images/jacket/${songData.img}.jpg`, // フォールバック用
+                        jacketUrl: `https://new.chunithm-net.com/chuni-mobile/images/jacket/${songData.img}.jpg`,
                         playCount: 'N/A', // プレイ回数は取得不可
                         params: {
                             ...initialSong.params,
@@ -590,7 +586,7 @@
                 } else if (song.difficulty === 'EXPERT') {
                     await fetch(URL_RANKING_EXPERT_SEND, { method: 'POST', body: new URLSearchParams({ ...song.params, category: '1', region: '1' }) });
                     scoreDoc = await fetchDocument(URL_RANKING_DETAIL);
-                } else { // MASTER
+                } else { // ここがMASTER。まさかADVANCED、BASICがレートに入ることなんかないよね？ (これ作った時の僕はあるかも)
                     scoreDoc = await fetchDocument(URL_RANKING_DETAIL);
                 }
 
@@ -677,7 +673,7 @@
             return total / list.length;
         };
 
-        // --- レイアウト定数 ---
+        // --- レイアウト定数 --- デザインは僕のはんちゅう外だから、概要だけ伝えてAIに決めてもらった。コメントはそのまま残す
         let WIDTH, COLS, BLOCK_WIDTH, CENTER_GAP;
         const PADDING = 30;
         const HEADER_HEIGHT = 280;
@@ -941,11 +937,11 @@
                     ctx.fillText(value, x + blockWidth - 15, y_pos);
                     ctx.textAlign = 'left';
                 };
-                drawDataRow('定数', song.const ? song.const.toFixed(1) : 'N/A', current_y);
+                drawDataRow('CONST', song.const ? song.const.toFixed(1) : 'N/A', current_y);
                 current_y += 30;
                 drawDataRow('プレイ回数', song.playCount || 'N/A', current_y);
                 current_y += 32;
-                drawDataRow('RATE', song.rating.toFixed(4), current_y, '#81D4FA', `bold 22px ${FONT_FAMILY}`);
+                drawDataRow('RATING', song.rating.toFixed(4), current_y, '#81D4FA', `bold 22px ${FONT_FAMILY}`);
             });
         };
 
@@ -963,7 +959,7 @@
             renderSongList("RECENT", songsWithImages.slice(bestList.length), recentStartX, listsStartY, COLS, BLOCK_WIDTH);
         }
 
-        // --- フッター描画 (新デザイン) ---
+        // --- フッター描画 ---
         ctx.font = `18px ${FONT_FAMILY}`;
         ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
         ctx.textAlign = 'right';
@@ -1113,7 +1109,7 @@
         let detailedSongs = [];
 
         if (scanMode === 'free') {
-            updateMessage(`FREEモード: ランキングから定数${constThreshold}以上の曲を検索します...`, 12);
+            updateMessage(`無料モード: ランキングから定数${constThreshold}以上の曲を検索します...`, 12);
             await sleep(1500); // メッセージ表示のための待機
             const songs = await fetchAllSongsForFreeUser(constThreshold, delay, constData);
 
@@ -1127,7 +1123,7 @@
 
             detailedSongs.sort((a, b) => b.rating - a.rating);
 
-        } else { // paid mode
+        } else { // 有料ユーザー向け、というかみんなこっちを使った方が絶対いい
             updateMessage("BEST枠の曲リストを取得中...", 15);
             const bestList = await scrapeRatingList(URL_RATING_BEST);
             if (isAborted) return;
@@ -1171,7 +1167,7 @@
 
     } catch (error) {
         if (isAborted) {
-            return; // ユーザーによる中断が原因のエラーは無視
+            return;
         }
         showError(error.message);
     }
