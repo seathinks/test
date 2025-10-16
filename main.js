@@ -25,6 +25,45 @@
     // ★★★ 中断フラグを定義 ★★★
     let isAborted = false;
 
+    // --- UIの準備 ---
+    const overlay = document.createElement('div');
+    const message = document.createElement('div');
+    const globalCloseButton = document.createElement('button');
+
+    // エラーメッセージを表示する共通関数
+    const showError = (errorMessage) => {
+        console.error(errorMessage);
+        overlay.innerHTML = '';
+        message.style.cssText = `
+            text-align: center;
+            font-size: 18px;
+            background-color: rgba(244, 67, 54, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(244, 67, 54, 0.5);
+        `;
+        message.textContent = `エラー: ${errorMessage}`;
+        overlay.appendChild(message);
+        overlay.appendChild(globalCloseButton);
+        if (!document.body.contains(overlay)) {
+            document.body.appendChild(overlay);
+        }
+    };
+
+    // ★★★ 変更点1: 実行場所の検証 ★★★
+    if (window.location.hostname !== 'new.chunithm-net.com') {
+        document.body.appendChild(overlay);
+        overlay.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85); z-index: 9999; display: flex;
+            justify-content: center; align-items: center; color: white;
+            font-family: sans-serif; padding: 20px; box-sizing: border-box;
+        `;
+        showError("このブックマークレットはCHUNITHM-NET内でのみ実行できます。");
+        globalCloseButton.onclick = () => document.body.removeChild(overlay);
+        return;
+    }
+
     const addGlobalStyles = () => {
         const style = document.createElement('style');
         style.textContent = `
@@ -47,8 +86,6 @@
     };
     addGlobalStyles();
 
-    // --- UIの準備 ---
-    const overlay = document.createElement('div');
     overlay.style.cssText = `
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
         background: rgba(0, 0, 0, 0.85); z-index: 9999; display: flex;
@@ -58,7 +95,6 @@
     document.body.appendChild(overlay);
 
     // 常に表示される閉じるボタンを追加
-    const globalCloseButton = document.createElement('button');
     globalCloseButton.innerHTML = '&times;';
     globalCloseButton.style.cssText = `
         position: fixed;
@@ -83,7 +119,6 @@
     globalCloseButton.onmousedown = () => { globalCloseButton.style.transform = 'scale(0.9)'; };
     globalCloseButton.onmouseup = () => { globalCloseButton.style.transform = 'scale(1)'; };
 
-    // ★★★ ボタンクリック時にフラグを立てる ★★★
     globalCloseButton.onclick = () => {
         isAborted = true; // 中断フラグを立てる
         console.log("処理がユーザーによって中断されました。");
@@ -332,7 +367,6 @@
         });
     };
 
-    const message = document.createElement('div');
     const updateMessage = (text, progress) => {
         console.log(text);
 
@@ -353,12 +387,20 @@
         }
     };
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    // ★★★ 変更点2: セッション切れ検知機能を追加 ★★★
     const fetchDocument = async (url, options = {}) => {
         const response = await fetch(url, options);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status} for ${url}`);
+        if (!response.ok) throw new Error(`HTTPエラーが発生しました: ${response.status} (${url})`);
+        
         const htmlText = await response.text();
+        if (htmlText.includes("再度ログインしてください。")) {
+            throw new Error("セッションが切れました。CHUNITHM-NETに再度ログインしてください。");
+        }
+        
         return new DOMParser().parseFromString(htmlText, 'text/html');
     };
+
     const scrapeRatingList = async (url) => {
         const doc = await fetchDocument(url);
         const songForms = doc.querySelectorAll('form[action$="sendMusicDetail/"]');
@@ -467,11 +509,7 @@
     };
 
     /**
-     * ★★★ 新規関数: FREEモード用の楽曲データ取得 ★★★
-     * @param {number} constThreshold - 譜面定数の下限値
-     * @param {number} delay - リクエスト間の遅延時間(秒)
-     * @param {Array} constData - chunirec.jsonのデータ
-     * @returns {Promise<Array>} - 楽曲データの配列
+     * FREEモード用の楽曲データ取得
      */
     const fetchAllSongsForFreeUser = async (constThreshold, delay, constData) => {
         updateMessage("ランキングページにアクセス中...", 5);
@@ -520,7 +558,7 @@
                 }
             }
         }
-        // 重複を削除（例: 同じ曲のMASとULTが両方対象になった場合）
+        // 重複を削除
         filteredSongs = filteredSongs.filter((song, index, self) =>
             index === self.findIndex((s) => (
                 s.title === song.title && s.difficulty === song.difficulty
@@ -1112,7 +1150,6 @@
 
                 if (isAborted) break;
 
-                // ★★★ 表示メッセージを修正 ★★★
                 updateMessage(`楽曲詳細を取得中: ${song.title} (${i + 1}/${allSongs.length})`, progress);
                 const details = await scrapeMusicDetail(song.params);
 
@@ -1136,13 +1173,6 @@
         if (isAborted) {
             return; // ユーザーによる中断が原因のエラーは無視
         }
-        if (!document.body.contains(overlay)) {
-            return;
-        }
-        console.error("ブックマークレットの実行中にエラーが発生しました:", error);
-        overlay.innerHTML = '';
-        overlay.appendChild(message);
-        message.textContent = `エラー: ${error.message} (詳細はコンソールを確認してください)`;
-        overlay.appendChild(globalCloseButton);
+        showError(error.message);
     }
 })();
