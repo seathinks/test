@@ -572,7 +572,7 @@
                 const song = list[i];
                 const progress = startProgress + (i / total) * progressShare;
                 if (i > 0 && delay > 0) {
-                    updateMessage(`サーバー負荷軽減のため待機中... (${delay.toFixed(1)}秒)`, progress);
+                    updateMessage(`待機中... (${delay.toFixed(1)}秒)`, progress);
                     await sleep(delay * 1000);
                 }
                 if (isAborted) break;
@@ -870,7 +870,7 @@
                 const ribbonY = jacket_y + 5;
                 const difficultyInfo = {
                     ULTIMA: { bg: 'linear-gradient(135deg, #a00, #310000)' },
-                    MASTER: { bg: '#8A2BE2' }, EXPERT: { bg: '#FF4500' },
+                    MASTER: { bg: '#8A2BE2' }, EXPERT: { bg: '#ff1100ff' },
                     ADVANCED: { bg: '#FDD835' }, BASIC: { bg: '#7CB342' },
                     UNKNOWN: { bg: '#9E9E9E' }
                 };
@@ -1149,7 +1149,7 @@
                 const progress = 20 + (i / allSongs.length) * 80;
 
                 if (i > 0 && delay > 0) {
-                    updateMessage(`サーバー負荷軽減のため待機中... (${delay.toFixed(1)}秒) - (${i}/${allSongs.length})`, progress);
+                    updateMessage(`待機中... (${delay.toFixed(1)}秒) - (${i}/${allSongs.length})`, progress);
                     await sleep(delay * 1000);
                 }
 
