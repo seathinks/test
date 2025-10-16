@@ -14,8 +14,15 @@
     const URL_RATING_RECENT = URL_PLAYER_DATA + "ratingDetailRecent/";
     const URL_SEND_DETAIL = BASE_URL + "record/musicGenre/sendMusicDetail/";
     const URL_DETAIL = BASE_URL + "record/musicDetail/";
+    const URL_RANKING_MASTER_SEND = BASE_URL + "ranking/sendMaster/";
+    const URL_RANKING_MASTER = BASE_URL + "ranking/master/";
+    const URL_RANKING_DETAIL_SEND = BASE_URL + "ranking/sendRankingDetail/";
+    const URL_RANKING_DETAIL = BASE_URL + "ranking/musicRankingDetail/";
+    const URL_RANKING_ULTIMA_SEND = URL_RANKING_DETAIL + "sendRankingUltima/";
+    const URL_RANKING_EXPERT_SEND = URL_RANKING_DETAIL + "sendRankingExpert/";
 
-    // ★★★ 変更点 1: 中断フラグを定義 ★★★
+
+    // ★★★ 中断フラグを定義 ★★★
     let isAborted = false;
 
     const addGlobalStyles = () => {
@@ -76,7 +83,7 @@
     globalCloseButton.onmousedown = () => { globalCloseButton.style.transform = 'scale(0.9)'; };
     globalCloseButton.onmouseup = () => { globalCloseButton.style.transform = 'scale(1)'; };
 
-    // ★★★ 変更点 2: ボタンクリック時にフラグを立てる ★★★
+    // ★★★ ボタンクリック時にフラグを立てる ★★★
     globalCloseButton.onclick = () => {
         isAborted = true; // 中断フラグを立てる
         console.log("処理がユーザーによって中断されました。");
@@ -88,13 +95,14 @@
 
     /**
      * ユーザーに設定を選択させる新しいUIを表示する
-     * @returns {Promise<{mode: string, delay: number}>} - 選択されたモードと遅延時間を解決するPromise
+     * @returns {Promise<{mode: string, delay: number, scanMode: string, constThreshold: number}>} - 選択された設定を解決するPromise
      */
     const askForSettings = () => {
         return new Promise(resolve => {
-            // (この関数内のコードは変更ありません)
             let selectedMode = null;
+            let selectedScanMode = null;
             let scrapeDelay = 1.0;
+            let constThreshold = 14.5;
 
             const container = document.createElement('div');
             container.style.cssText = `
@@ -102,21 +110,92 @@
                 padding: 40px; border-radius: 20px;
                 box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
                 border: 1px solid rgba(255, 255, 255, 0.1);
-                text-align: center; width: 600px;
+                text-align: center; width: 650px; max-height: 90vh; overflow-y: auto;
             `;
 
             const title = document.createElement('h2');
             title.textContent = 'CHUNITHM 画像ジェネレーター設定';
-            title.style.cssText = 'font-size: 28px; margin-bottom: 20px; font-weight: bold; color: #E0E0E0;';
+            title.style.cssText = 'font-size: 28px; margin-bottom: 15px; font-weight: bold; color: #E0E0E0;';
             container.appendChild(title);
 
             const subtitle = document.createElement('p');
-            subtitle.textContent = '画像生成モードとデータ取得間隔を設定してください。';
-            subtitle.style.cssText = 'font-size: 16px; margin-bottom: 40px; color: #B0B0B0;';
+            subtitle.textContent = '動作モード、画像レイアウト、取得間隔を設定してください。';
+            subtitle.style.cssText = 'font-size: 16px; margin-bottom: 30px; color: #B0B0B0;';
             container.appendChild(subtitle);
 
+            // --- Scan Mode Selection ---
+            const scanModeSection = document.createElement('div');
+            scanModeSection.style.cssText = 'margin-bottom: 30px;';
+            const scanModeLabel = document.createElement('label');
+            scanModeLabel.textContent = '動作モード';
+            scanModeLabel.style.cssText = 'display: block; font-size: 18px; font-weight: bold; color: #D0D0D0; margin-bottom: 15px;';
+            scanModeSection.appendChild(scanModeLabel);
+            const scanModeButtonsContainer = document.createElement('div');
+            scanModeButtonsContainer.style.cssText = 'display: flex; justify-content: center; gap: 20px;';
+            const constThresholdSection = document.createElement('div');
+            constThresholdSection.style.cssText = 'margin-top: 25px; display: none;';
+            
+            const createScanModeButton = (text, scanMode) => {
+                const button = document.createElement('button');
+                button.innerHTML = text;
+                button.dataset.scanMode = scanMode;
+                button.style.cssText = `
+                    flex: 1; padding: 15px; font-size: 16px; font-weight: bold; cursor: pointer;
+                    background-color: #333; color: white; border: 2px solid #555; border-radius: 8px;
+                    transition: all 0.2s ease-out;
+                `;
+                button.onclick = () => {
+                    selectedScanMode = scanMode;
+                    document.querySelectorAll('button[data-scan-mode]').forEach(btn => {
+                        const isSelected = btn.dataset.scanMode === selectedScanMode;
+                        btn.style.backgroundColor = isSelected ? '#4A90E2' : '#333';
+                        btn.style.borderColor = isSelected ? '#6FBFFF' : '#555';
+                    });
+                    constThresholdSection.style.display = scanMode === 'free' ? 'block' : 'none';
+                    checkIfReady();
+                };
+                return button;
+            };
+            scanModeButtonsContainer.appendChild(createScanModeButton('通常モード<br><small>(Rating準拠 / 要課金)</small>', 'paid'));
+            scanModeButtonsContainer.appendChild(createScanModeButton('FREEモード<br><small>(全曲スキャン / 無料可)</small>', 'free'));
+            scanModeSection.appendChild(scanModeButtonsContainer);
+            container.appendChild(scanModeSection);
+            
+            // --- Const Threshold Section (for FREE mode) ---
+            const constLabel = document.createElement('label');
+            constLabel.textContent = 'レート対象にする譜面定数の下限値';
+            constLabel.style.cssText = 'display: block; font-size: 16px; color: #D0D0D0; margin-bottom: 10px;';
+            constThresholdSection.appendChild(constLabel);
+            const constInput = document.createElement('input');
+            constInput.type = 'number';
+            constInput.value = constThreshold;
+            constInput.min = '13.0';
+            constInput.max = '15.4';
+            constInput.step = '0.1';
+            constInput.style.cssText = `
+                width: 100px; padding: 8px; font-size: 18px; text-align: center;
+                background-color: #222; color: white; border: 1px solid #555; border-radius: 5px;
+            `;
+            constInput.onchange = () => {
+                const val = parseFloat(constInput.value);
+                if (!isNaN(val) && val >= 13.0 && val <= 15.4) {
+                    constThreshold = val;
+                } else {
+                    constInput.value = constThreshold;
+                }
+            };
+            constThresholdSection.appendChild(constInput);
+            const freeModeWarning = document.createElement('p');
+            freeModeWarning.innerHTML = '⚠️ <strong>注意:</strong> FREEモードは公式サイトのランキングから全曲のスコアを取得するため、完了までに<strong>数分以上</strong>かかる場合があります。';
+            freeModeWarning.style.cssText = 'font-size: 14px; margin-top: 15px; color: #FFC107; background-color: rgba(255, 193, 7, 0.1); padding: 10px; border-radius: 5px; border: 1px solid rgba(255, 193, 7, 0.3);';
+            constThresholdSection.appendChild(freeModeWarning);
+            container.appendChild(constThresholdSection);
+
+
+            // --- Delay Section ---
             const delaySection = document.createElement('div');
-            delaySection.style.cssText = 'margin-bottom: 40px;';
+            // ... (内容は変更なし) ...
+            delaySection.style.cssText = 'margin-bottom: 30px; margin-top: 20px;';
             const delayLabel = document.createElement('label');
             delayLabel.textContent = '取得間隔 (秒)';
             delayLabel.style.cssText = 'display: block; font-size: 18px; font-weight: bold; color: #D0D0D0; margin-bottom: 15px;';
@@ -133,7 +212,7 @@
                     width: 50px; height: 50px; margin: 0 15px; font-size: 24px;
                     cursor: pointer; background-color: #4A90E2; color: white;
                     border: none; border-radius: 50%; transition: all 0.2s ease-out; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-                `; // ★★★ 変更点 4: Transitionと影を追加
+                `;
                 button.onmouseover = () => {
                     button.style.backgroundColor = '#357ABD';
                     button.style.transform = 'scale(1.1)';
@@ -166,10 +245,13 @@
             delaySection.appendChild(delayControls);
             container.appendChild(delaySection);
 
+
+            // --- Image Mode Selection ---
             const modeSection = document.createElement('div');
-            modeSection.style.cssText = 'margin-bottom: 50px;';
+            // ... (内容は変更なし) ...
+            modeSection.style.cssText = 'margin-bottom: 40px;';
             const modeLabel = document.createElement('label');
-            modeLabel.textContent = '画像生成モード';
+            modeLabel.textContent = '画像レイアウト';
             modeLabel.style.cssText = 'display: block; font-size: 18px; font-weight: bold; color: #D0D0D0; margin-bottom: 15px;';
             modeSection.appendChild(modeLabel);
             const modeButtonsContainer = document.createElement('div');
@@ -186,7 +268,7 @@
                     border: 2px solid #555; border-radius: 8px;
                     transition: all 0.2s ease-out;
                     transform: translateY(0);
-                `; // ★★★ 変更点 5: Transition追加
+                `;
                 button.onmouseover = () => {
                     button.style.transform = 'translateY(-4px)';
                     button.style.boxShadow = '0 6px 15px rgba(0, 0, 0, 0.3)';
@@ -201,21 +283,27 @@
                         const isSelected = btn.dataset.mode === selectedMode;
                         btn.style.backgroundColor = isSelected ? '#4A90E2' : '#333';
                         btn.style.borderColor = isSelected ? '#6FBFFF' : '#555';
-                        btn.style.color = isSelected ? 'white' : '#ccc';
                     });
-                    generateButton.disabled = false;
-                    generateButton.style.opacity = '1';
-                    generateButton.style.cursor = 'pointer';
-                    // ★★★ 変更点 6: 有効化時にアニメーションを適用 ★★★
-                    generateButton.style.animation = 'pulseGlow 2s infinite';
+                    checkIfReady();
                 };
                 return button;
             };
-            modeButtonsContainer.appendChild(createModeButton('縦モード (Portrait)', 'vertical'));
-            modeButtonsContainer.appendChild(createModeButton('横モード (Landscape)', 'horizontal'));
+            modeButtonsContainer.appendChild(createModeButton('縦モード', 'vertical'));
+            modeButtonsContainer.appendChild(createModeButton('横モード', 'horizontal'));
             modeSection.appendChild(modeButtonsContainer);
             container.appendChild(modeSection);
 
+
+            // --- Generate Button ---
+            const checkIfReady = () => {
+                if (selectedMode && selectedScanMode) {
+                    generateButton.disabled = false;
+                    generateButton.style.opacity = '1';
+                    generateButton.style.cursor = 'pointer';
+                    generateButton.style.animation = 'pulseGlow 2s infinite';
+                }
+            };
+            
             generateButton.textContent = '生成開始';
             generateButton.disabled = true;
             generateButton.style.cssText = `
@@ -226,8 +314,8 @@
             generateButton.onmouseover = () => { if (!generateButton.disabled) generateButton.style.background = 'linear-gradient(145deg, #4cae4c, #449d44)'; };
             generateButton.onmouseout = () => { if (!generateButton.disabled) generateButton.style.background = 'linear-gradient(145deg, #5cb85c, #4cae4c)'; };
             generateButton.onclick = () => {
-                if (selectedMode) {
-                    resolve({ mode: selectedMode, delay: scrapeDelay });
+                if (selectedMode && selectedScanMode) {
+                    resolve({ mode: selectedMode, delay: scrapeDelay, scanMode: selectedScanMode, constThreshold });
                 }
             };
             container.appendChild(generateButton);
@@ -237,13 +325,11 @@
             overlay.appendChild(globalCloseButton);
         });
     };
-    
-    // (これ以降のヘルパー関数は変更ありません)
-    const message = document.createElement('div'); // pからdivに変更
+
+    const message = document.createElement('div');
     const updateMessage = (text, progress) => {
         console.log(text);
         
-        // ★★★ 変更点 7: プログレスバーUIの更新 ★★★
         const textElement = message.querySelector('.progress-text');
         if (textElement) {
             textElement.style.opacity = '0';
@@ -261,8 +347,8 @@
         }
     };
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-    const fetchDocument = async (url) => {
-        const response = await fetch(url);
+    const fetchDocument = async (url, options = {}) => {
+        const response = await fetch(url, options);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status} for ${url}`);
         const htmlText = await response.text();
         return new DOMParser().parseFromString(htmlText, 'text/html');
@@ -373,8 +459,115 @@
             img.src = url;
         });
     };
+
+    /**
+     * ★★★ 新規関数: FREEモード用の楽曲データ取得 ★★★
+     * @param {number} constThreshold - 譜面定数の下限値
+     * @param {number} delay - リクエスト間の遅延時間(秒)
+     * @param {Array} constData - chunirec.jsonのデータ
+     * @returns {Promise<Array>} - 楽曲データの配列
+     */
+    const fetchAllSongsForFreeUser = async (constThreshold, delay, constData) => {
+        updateMessage("ランキングページにアクセス中...", 5);
+        const token = document.cookie.split('; ').find(row => row.startsWith('_t=')).split('=')[1];
+        await fetch(URL_RANKING_MASTER_SEND, {
+            method: 'POST',
+            body: new URLSearchParams({ genre: '99', token: token })
+        });
+        const rankingDoc = await fetchDocument(URL_RANKING_MASTER);
+        if (isAborted) return [];
+
+        const songForms = rankingDoc.querySelectorAll('form[action$="sendRankingDetail/"]');
+        let initialSongList = [];
+        songForms.forEach(form => {
+            initialSongList.push({
+                title: form.querySelector('.music_title').innerText,
+                params: {
+                    idx: form.querySelector('input[name="idx"]').value,
+                    token: form.querySelector('input[name="token"]').value,
+                    genre: form.querySelector('input[name="genre"]').value,
+                    diff: form.querySelector('input[name="diff"]').value,
+                }
+            });
+        });
+
+        updateMessage("定数データと楽曲リストを照合中...", 10);
+        let filteredSongs = [];
+        const diffMap = { 'MAS': '3', 'EXP': '2', 'ULT': '4' };
+
+        for (const songData of constData) {
+            if (songData.const >= constThreshold) {
+                const initialSong = initialSongList.find(s => s.title === songData.title);
+                if (initialSong && diffMap[songData.diff]) {
+                    filteredSongs.push({
+                        title: songData.title,
+                        artist: songData.artist,
+                        difficulty: { 'MAS': 'MASTER', 'EXP': 'EXPERT', 'ULT': 'ULTIMA'}[songData.diff],
+                        const: songData.const,
+                        jacketUrl: `https://new.chunithm-net.com/chuni-mobile/images/jacket/${songData.img}.jpg`,
+                        playCount: 'N/A', // プレイ回数は取得不可
+                        params: {
+                            ...initialSong.params,
+                            diff: diffMap[songData.diff]
+                        }
+                    });
+                }
+            }
+        }
+        // 重複を削除（例: 同じ曲のMASとULTが両方対象になった場合）
+        filteredSongs = filteredSongs.filter((song, index, self) =>
+            index === self.findIndex((s) => (
+                s.title === song.title && s.difficulty === song.difficulty
+            ))
+        );
+
+        let detailedSongs = [];
+        const total = filteredSongs.length;
+        for (let i = 0; i < total; i++) {
+            if (isAborted) break;
+            const song = filteredSongs[i];
+            const progress = 15 + (i / total) * 85;
+
+            if (i > 0 && delay > 0) {
+                updateMessage(`サーバー負荷軽減のため待機中... (${delay.toFixed(1)}秒) - (${i}/${total})`, progress);
+                await sleep(delay * 1000);
+            }
+            if (isAborted) break;
+
+            try {
+                updateMessage(`スコア取得中: ${song.title} [${song.difficulty}] (${i + 1}/${total})`, progress);
+                
+                await fetch(URL_RANKING_DETAIL_SEND, { method: 'POST', body: new URLSearchParams(song.params) });
+                
+                let scoreDoc;
+                if (song.difficulty === 'ULTIMA') {
+                    await fetch(URL_RANKING_ULTIMA_SEND, { method: 'POST', body: new URLSearchParams({ ...song.params, category: '1', region: '1' }) });
+                    scoreDoc = await fetchDocument(URL_RANKING_DETAIL);
+                } else if (song.difficulty === 'EXPERT') {
+                     await fetch(URL_RANKING_EXPERT_SEND, { method: 'POST', body: new URLSearchParams({ ...song.params, category: '1', region: '1' }) });
+                    scoreDoc = await fetchDocument(URL_RANKING_DETAIL);
+                } else { // MASTER
+                    scoreDoc = await fetchDocument(URL_RANKING_DETAIL);
+                }
+
+                const scoreElement = scoreDoc.querySelector('.rank_playdata_highscore .text_b');
+                if (scoreElement) {
+                    const score_str = scoreElement.innerText;
+                    const score_int = parseInt(score_str.replace(/,/g, ''), 10);
+                    detailedSongs.push({ ...song, score_str, score_int });
+                } else {
+                     detailedSongs.push({ ...song, score_str: '0', score_int: 0 }); // スコアがなければ0点
+                }
+
+            } catch (e) {
+                console.warn(`スコア取得失敗: ${song.title}`, e);
+            }
+        }
+        return detailedSongs;
+    };
+
+
     const generateImage = async (playerData, bestList, recentList, mode) => {
-        // (この関数内のコードは変更ありません)
         await document.fonts.load('bold 20px "Noto Sans JP"');
         await document.fonts.load('20px "Noto Sans JP"');
         
@@ -701,9 +894,9 @@
                     ctx.fillText(value, x + blockWidth - 15, y_pos);
                     ctx.textAlign = 'left';
                 };
-                drawDataRow('定数', song.const.toFixed(1), current_y);
+                drawDataRow('定数', song.const ? song.const.toFixed(1) : 'N/A', current_y);
                 current_y += 30;
-                drawDataRow('プレイ回数', song.playCount, current_y);
+                drawDataRow('プレイ回数', song.playCount || 'N/A', current_y);
                 current_y += 32;
                 drawDataRow('RATE', song.rating.toFixed(4), current_y, '#81D4FA', `bold 22px ${FONT_FAMILY}`);
             });
@@ -828,13 +1021,12 @@
     
     // --- メイン処理 ---
     try {
-        const { mode, delay } = await askForSettings();
+        const { mode, delay, scanMode, constThreshold } = await askForSettings();
         
         if (isAborted) return;
         
         overlay.innerHTML = '';
         
-        // ★★★ 変更点 8: プログレスバーUIの初期化 ★★★
         message.style.cssText = `
             width: 500px; text-align: center;
             animation: fadeIn 0.5s;
@@ -870,46 +1062,63 @@
         updateMessage("譜面定数データをダウンロード中...", 10);
         const constData = await fetch(CONST_DATA_URL).then(res => res.json());
         if (isAborted) return;
-
-        updateMessage("BEST枠の曲リストを取得中...", 15);
-        const bestList = await scrapeRatingList(URL_RATING_BEST);
-        if (isAborted) return;
         
-        updateMessage("新曲枠の曲リストを取得中...", 20);
-        const recentList = await scrapeRatingList(URL_RATING_RECENT);
-        if (isAborted) return;
+        let detailedSongs = [];
 
-        const allSongs = [...bestList, ...recentList];
-        const detailedSongs = [];
+        if (scanMode === 'free') {
+            updateMessage(`FREEモード: ランキングから定数${constThreshold}以上の曲を検索します...`, 12);
+            await sleep(1500); // メッセージ表示のための待機
+            const songs = await fetchAllSongsForFreeUser(constThreshold, delay, constData);
 
-        for (let i = 0; i < allSongs.length; i++) {
-            if (isAborted) break;
-
-            const song = allSongs[i];
-            const progress = 20 + (i / allSongs.length) * 80;
+            if (isAborted) return;
             
-            if (i > 0 && delay > 0) {
-                updateMessage(`サーバー負荷軽減のため待機中... (${delay.toFixed(1)}秒) - (${i}/${allSongs.length})`, progress);
-                await sleep(delay * 1000);
+            updateMessage("全楽曲のレーティングを計算中...", 98);
+            songs.forEach(song => {
+                const rating = calculateRating(song.score_int, song.const);
+                detailedSongs.push({ ...song, rating });
+            });
+            
+            detailedSongs.sort((a, b) => b.rating - a.rating);
+
+        } else { // paid mode
+            updateMessage("BEST枠の曲リストを取得中...", 15);
+            const bestList = await scrapeRatingList(URL_RATING_BEST);
+            if (isAborted) return;
+            
+            updateMessage("RECENT枠の曲リストを取得中...", 20);
+            const recentList = await scrapeRatingList(URL_RATING_RECENT);
+            if (isAborted) return;
+
+            const allSongs = [...bestList, ...recentList];
+
+            for (let i = 0; i < allSongs.length; i++) {
+                if (isAborted) break;
+                const song = allSongs[i];
+                const progress = 20 + (i / allSongs.length) * 80;
+                
+                if (i > 0 && delay > 0) {
+                    updateMessage(`サーバー負荷軽減のため待機中... (${delay.toFixed(1)}秒) - (${i}/${allSongs.length})`, progress);
+                    await sleep(delay * 1000);
+                }
+                
+                if (isAborted) break;
+
+                updateMessage(`楽曲詳細を取得中... (${i + 1}/${allSongs.length})`, progress);
+                const details = await scrapeMusicDetail(song.params);
+
+                const difficultyMapToJson = { 'MASTER': 'MAS', 'EXPERT': 'EXP', 'ULTIMA': 'ULT', 'ADVANCED': 'ADV', 'BASIC': 'BAS' };
+                const diffAbbreviation = difficultyMapToJson[song.difficulty];
+                const matchedConst = constData.find(m => m.title === song.title && m.diff === diffAbbreviation)?.const;
+                const rating = calculateRating(song.score_int, matchedConst);
+                
+                detailedSongs.push({ ...song, ...details, 'const': matchedConst || 0.0, rating });
             }
-            
-            if (isAborted) break;
-
-            updateMessage(`楽曲詳細を取得中... (${i + 1}/${allSongs.length})`, progress);
-            const details = await scrapeMusicDetail(song.params);
-
-            const difficultyMapToJson = { 'MASTER': 'MAS', 'EXPERT': 'EXP', 'ULTIMA': 'ULT', 'ADVANCED': 'ADV', 'BASIC': 'BAS' };
-            const diffAbbreviation = difficultyMapToJson[song.difficulty];
-            const matchedConst = constData.find(m => m.title === song.title && m.diff === diffAbbreviation)?.const;
-            const rating = calculateRating(song.score_int, matchedConst);
-            
-            detailedSongs.push({ ...song, ...details, 'const': matchedConst || 0.0, rating });
         }
         
         if (isAborted) return;
 
-        const finalBestList = detailedSongs.slice(0, bestList.length);
-        const finalRecentList = detailedSongs.slice(bestList.length);
+        const finalBestList = detailedSongs.slice(0, 30);
+        const finalRecentList = detailedSongs.slice(30, 50);
 
         await generateImage(playerData, finalBestList, finalRecentList, mode);
 
