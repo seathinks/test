@@ -1113,7 +1113,6 @@
 
         let finalBestList = [];
         let finalRecentList = [];
-        //let detailedSongs = [];
 
         if (scanMode === 'free') {
             updateMessage(`無料モード: ランキングから定数${constThreshold}以上の曲を検索します...`, 12);
@@ -1133,7 +1132,7 @@
             finalRecentList = detailedNewSongs.slice(0, 20);
 
         } else { // 有料ユーザー向け、というかみんなこっちを使った方が絶対いい
-            
+            let detailedSongs = [];
             updateMessage("BEST枠の曲リストを取得中...", 15);
             const bestList = await scrapeRatingList(URL_RATING_BEST);
             if (isAborted) return;
